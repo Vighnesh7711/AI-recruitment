@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import rateLimit from 'express-rate-limit';
-import { User } from '../../../database';
+import { User, Hr, Candidate } from '../../../database';
 import { AppError } from '../utils/errors';
 import logger from '../lib/logger';
 
@@ -58,21 +58,24 @@ router.post(
 
       // Verification token
       const verificationToken = crypto.randomBytes(32).toString('hex');
-      const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-      // Create HR User
+      // Create User
       const user = await User.create({
         email,
         passwordHash,
-        fullName: name,
         role: 'hr',
-        companyId,
         isVerified: false,
         verificationToken,
-        verificationTokenExpires,
-        hrProfile: {
-          designation,
-        },
+        verificationTokenExpiry,
+      });
+
+      // Create Hr profile
+      await Hr.create({
+        userId: user._id,
+        companyId: companyId || undefined,
+        name,
+        designation,
       });
 
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -138,18 +141,23 @@ router.post(
       const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
       const verificationToken = crypto.randomBytes(32).toString('hex');
-      const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       const user = await User.create({
         email,
         passwordHash,
-        fullName: name,
         role: 'candidate',
-        phone,
         isVerified: false,
         verificationToken,
-        verificationTokenExpires,
-        candidateProfile: {},
+        verificationTokenExpiry,
+      });
+
+      // Create Candidate profile
+      await Candidate.create({
+        userId: user._id,
+        name,
+        phone,
+        skills: [],
       });
 
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -205,7 +213,7 @@ router.post(
 
       const user = await User.findOne({
         verificationToken: token,
-        verificationTokenExpires: { $gt: new Date() },
+        verificationTokenExpiry: { $gt: new Date() },
       });
 
       if (!user) {
@@ -214,7 +222,7 @@ router.post(
 
       user.isVerified = true;
       user.verificationToken = undefined;
-      user.verificationTokenExpires = undefined;
+      user.verificationTokenExpiry = undefined;
       await user.save();
 
       res.json({
@@ -272,10 +280,6 @@ router.post(
         expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
       });
 
-      // Update last login
-      user.lastLogin = new Date();
-      await user.save();
-
       res.json({
         accessToken,
         user: {
@@ -314,10 +318,10 @@ router.post(
       }
 
       const resetPasswordToken = crypto.randomBytes(32).toString('hex');
-      const resetPasswordExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+      const resetPasswordTokenExpiry = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
 
       user.resetPasswordToken = resetPasswordToken;
-      user.resetPasswordExpires = resetPasswordExpires;
+      user.resetPasswordTokenExpiry = resetPasswordTokenExpiry;
       await user.save();
 
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -350,7 +354,7 @@ router.post(
 
       const user = await User.findOne({
         resetPasswordToken: token,
-        resetPasswordExpires: { $gt: new Date() },
+        resetPasswordTokenExpiry: { $gt: new Date() },
       });
 
       if (!user) {
@@ -361,7 +365,7 @@ router.post(
 
       user.passwordHash = passwordHash;
       user.resetPasswordToken = undefined;
-      user.resetPasswordExpires = undefined;
+      user.resetPasswordTokenExpiry = undefined;
       await user.save();
 
       res.json({

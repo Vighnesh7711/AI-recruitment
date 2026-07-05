@@ -1,110 +1,51 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IATSAnalysis {
-  overallScore: number;
-  matchedSkills: string[];
-  missingSkills: string[];
-  experienceMatch: number;
-  educationMatch: number;
-  strengths: string[];
-  weaknesses: string[];
-  recommendations: string[];
-}
-
 export interface IApplication extends Document {
-  jobId: mongoose.Types.ObjectId;
   candidateId: mongoose.Types.ObjectId;
-  resumePath?: string;
-  resumeOriginalName?: string;
-  coverLetter?: string;
-  parsedResume?: Record<string, unknown>;
-  atsScore?: number;
-  atsAnalysis?: IATSAnalysis;
-  status:
-    | 'applied'
-    | 'submitted'
-    | 'under_review'
-    | 'shortlisted'
-    | 'interview_scheduled'
-    | 'interviewed'
-    | 'offered'
-    | 'hired'
-    | 'rejected'
-    | 'withdrawn';
-  rejectionReason?: string;
-  finalScore?: number;
-  reviewedBy?: mongoose.Types.ObjectId;
-  reviewedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  jobId: mongoose.Types.ObjectId;
+  resumeId: mongoose.Types.ObjectId;
+  status: 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'interview_scheduled' | 'selected';
+  appliedOn: Date;
 }
-
-const ATSAnalysisSchema = new Schema<IATSAnalysis>(
-  {
-    overallScore: Number,
-    matchedSkills: [String],
-    missingSkills: [String],
-    experienceMatch: Number,
-    educationMatch: Number,
-    strengths: [String],
-    weaknesses: [String],
-    recommendations: [String],
-  },
-  { _id: false }
-);
 
 const ApplicationSchema = new Schema<IApplication>(
   {
+    candidateId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Candidate',
+      required: true,
+      index: true,
+    },
     jobId: {
       type: Schema.Types.ObjectId,
       ref: 'JobPosting',
       required: true,
       index: true,
     },
-    candidateId: {
+    resumeId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Resume',
       required: true,
       index: true,
     },
-    resumePath: String,
-    resumeOriginalName: String,
-    coverLetter: String,
-    parsedResume: Schema.Types.Mixed,
-    atsScore: Number,
-    atsAnalysis: ATSAnalysisSchema,
     status: {
       type: String,
-      enum: [
-        'applied',
-        'submitted',
-        'under_review',
-        'shortlisted',
-        'interview_scheduled',
-        'interviewed',
-        'offered',
-        'hired',
-        'rejected',
-        'withdrawn',
-      ],
+      enum: ['applied', 'under_review', 'shortlisted', 'rejected', 'interview_scheduled', 'selected'],
       default: 'applied',
       index: true,
     },
-    rejectionReason: String,
-    finalScore: Number,
-    reviewedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      index: true,
+    appliedOn: {
+      type: Date,
+      default: Date.now,
+      required: true,
     },
-    reviewedAt: Date,
   },
   {
-    timestamps: true,
+    timestamps: false,
   }
 );
 
-// Compound index: one application per candidate per job
-ApplicationSchema.index({ jobId: 1, candidateId: 1 }, { unique: true });
+// Compound unique index on (candidateId, jobId)
+ApplicationSchema.index({ candidateId: 1, jobId: 1 }, { unique: true });
 
-export const Application = mongoose.model<IApplication>('Application', ApplicationSchema);
+export const Application = mongoose.model<IApplication>('Application', ApplicationSchema, 'applications');

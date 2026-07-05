@@ -2,11 +2,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IInterviewReminder extends Document {
   interviewId: mongoose.Types.ObjectId;
+  emailSent: boolean;
+  whatsappSent: boolean;
+  smsSent: boolean;
   scheduledTime: Date;
-  candidateEmailSent: boolean;
-  hrEmailSent: boolean;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 const InterviewReminderSchema = new Schema<IInterviewReminder>(
@@ -17,26 +16,34 @@ const InterviewReminderSchema = new Schema<IInterviewReminder>(
       required: true,
       index: true,
     },
+    emailSent: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    whatsappSent: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    smsSent: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
     scheduledTime: {
       type: Date,
       required: true,
       index: true,
     },
-    candidateEmailSent: {
-      type: Boolean,
-      default: false,
-    },
-    hrEmailSent: {
-      type: Boolean,
-      default: false,
-    },
   },
   {
-    timestamps: true,
+    timestamps: false,
   }
 );
 
 export const InterviewReminder = mongoose.model<IInterviewReminder>(
   'InterviewReminder',
-  InterviewReminderSchema
+  InterviewReminderSchema,
+  'interview_reminders'
 );

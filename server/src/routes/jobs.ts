@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { JobPosting, User } from '../../../database';
+import { JobPosting, User, Hr } from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
 
@@ -8,7 +8,6 @@ const router = Router();
 
 /**
  * Helper to optionally parse JWT for public endpoints to determine user role
- * (since guests/candidates have restricted views but HR can see drafts on public endpoints).
  */
 async function getOptionalUser(req: Request): Promise<any> {
   const authHeader = req.headers.authorization;
@@ -23,14 +22,14 @@ async function getOptionalUser(req: Request): Promise<any> {
       return await User.findById(decoded.sub);
     }
   } catch {
-    // Ignore invalid tokens for optional auth
+    // Ignore invalid tokens
   }
   return null;
 }
 
 /**
  * POST /jobs
- * Body: { title, domain, experience, skillsRequired, description, salary, deadline, location, locationType, employmentType }
+ * Body: { title, domain, experience, skillsRequired, description, salary, deadline }
  * Creates a job posting in 'draft' status.
  */
 router.post(
@@ -47,32 +46,32 @@ router.post(
         description,
         salary,
         deadline,
-        location,
-        locationType,
-        employmentType,
       } = req.body;
 
-      if (!title || !description) {
-        throw new AppError('Missing required fields: title, description.', 400, 'VALIDATION_ERROR');
+      if (!title || !description || !domain || !experience || !skillsRequired || !salary || !deadline) {
+        throw new AppError('Missing required fields.', 400, 'VALIDATION_ERROR');
       }
 
-      // Map incoming request body to the JobPosting schema fields
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
+      }
+
+      if (!hr.companyId) {
+        throw new AppError('Please complete your company profile before posting jobs.', 400, 'COMPANY_REQUIRED');
+      }
+
       const job = await JobPosting.create({
+        hrId: hr._id,
+        companyId: hr.companyId,
         title,
+        domain,
+        experience,
+        skillsRequired: Array.isArray(skillsRequired) ? skillsRequired : [],
         description,
-        department: domain || 'General',
-        experienceLevel: experience || 'mid',
-        skills: Array.isArray(skillsRequired) ? skillsRequired : [],
-        requirements: req.body.requirements || [],
-        salaryMin: salary ? Number(salary) : undefined,
-        salaryMax: salary ? Number(salary) : undefined,
-        applicationDeadline: deadline ? new Date(deadline) : undefined,
-        location: location || 'Remote',
-        locationType: locationType || 'remote',
-        employmentType: employmentType || 'full-time',
-        postedBy: req.user!._id,
-        companyId: req.user!.companyId,
-        status: 'draft', // Forced to draft on create
+        salary: String(salary),
+        deadline: new Date(deadline),
+        status: 'draft',
       });
 
       res.status(201).json(job);
@@ -85,7 +84,6 @@ router.post(
 /**
  * GET /jobs (Public List)
  * Query params: ?domain=&status=
- * Candidates always see only status:'active' regardless of query.
  */
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -94,13 +92,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
 
     const filter: any = {};
 
-    // Filter by domain (department in DB)
     if (domain) {
-      filter.department = { $regex: String(domain), $options: 'i' };
+      filter.domain = { $regex: String(domain), $options: 'i' };
     }
 
-    // Role check: candidates/guests always see active postings only
-    if (user && (user.role === 'hr' || user.role === 'admin')) {
+    // HR/Admins can see drafts, candidates only see active
+    if (user && user.role === 'hr') {
       if (status) {
         filter.status = String(status);
       }
@@ -128,8 +125,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction): Prom
       throw new AppError('Job posting not found.', 404, 'NOT_FOUND');
     }
 
-    // Restrict access to drafts/paused for candidates/guests
-    const isPrivileged = user && (user.role === 'hr' || user.role === 'admin');
+    const isPrivileged = user && user.role === 'hr';
     if (!isPrivileged && job.status !== 'active') {
       throw new AppError('Job posting is not active.', 403, 'FORBIDDEN');
     }
@@ -159,11 +155,13 @@ router.put(
         description,
         salary,
         deadline,
-        location,
-        locationType,
-        employmentType,
         status,
       } = req.body;
+
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
+      }
 
       const job = await JobPosting.findById(id);
       if (!job) {
@@ -171,7 +169,7 @@ router.put(
       }
 
       // Ownership verification
-      if (job.postedBy.toString() !== req.user!._id.toString()) {
+      if (job.hrId.toString() !== hr._id.toString()) {
         throw new AppError(
           'You do not have permission to modify this job posting.',
           403,
@@ -182,24 +180,17 @@ router.put(
       // Update fields
       if (title !== undefined) job.title = title;
       if (description !== undefined) job.description = description;
-      if (domain !== undefined) job.department = domain;
-      if (experience !== undefined) job.experienceLevel = experience;
+      if (domain !== undefined) job.domain = domain;
+      if (experience !== undefined) job.experience = experience;
       if (skillsRequired !== undefined)
-        job.skills = Array.isArray(skillsRequired) ? skillsRequired : [];
-      if (salary !== undefined) {
-        job.salaryMin = Number(salary);
-        job.salaryMax = Number(salary);
-      }
-      if (deadline !== undefined)
-        job.applicationDeadline = deadline ? new Date(deadline) : undefined;
-      if (location !== undefined) job.location = location;
-      if (locationType !== undefined) job.locationType = locationType;
-      if (employmentType !== undefined) job.employmentType = employmentType;
+        job.skillsRequired = Array.isArray(skillsRequired) ? skillsRequired : [];
+      if (salary !== undefined) job.salary = String(salary);
+      if (deadline !== undefined) job.deadline = new Date(deadline);
       if (status !== undefined) {
-        if (!['draft', 'active', 'paused', 'closed'].includes(status)) {
+        if (!['draft', 'active', 'closed'].includes(status)) {
           throw new AppError('Invalid job status.', 400, 'VALIDATION_ERROR');
         }
-        job.status = status;
+        job.status = status as 'draft' | 'active' | 'closed';
       }
 
       await job.save();
@@ -213,7 +204,6 @@ router.put(
 /**
  * PATCH /jobs/:id/status
  * Body: { status }
- * Updates the status of a job posting (e.g. toggle active/paused).
  */
 router.patch(
   '/:id/status',
@@ -228,8 +218,13 @@ router.patch(
         throw new AppError('Status is required.', 400, 'VALIDATION_ERROR');
       }
 
-      if (!['draft', 'active', 'paused', 'closed'].includes(status)) {
+      if (!['draft', 'active', 'closed'].includes(status)) {
         throw new AppError('Invalid status value.', 400, 'VALIDATION_ERROR');
+      }
+
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
 
       const job = await JobPosting.findById(id);
@@ -238,7 +233,7 @@ router.patch(
       }
 
       // Ownership verification
-      if (job.postedBy.toString() !== req.user!._id.toString()) {
+      if (job.hrId.toString() !== hr._id.toString()) {
         throw new AppError(
           'You do not have permission to modify this job posting.',
           403,
@@ -246,7 +241,7 @@ router.patch(
         );
       }
 
-      job.status = status as 'draft' | 'active' | 'paused' | 'closed';
+      job.status = status as 'draft' | 'active' | 'closed';
       await job.save();
 
       res.json(job);
@@ -258,7 +253,6 @@ router.patch(
 
 /**
  * DELETE /jobs/:id
- * Deletes the job posting.
  */
 router.delete(
   '/:id',
@@ -268,13 +262,18 @@ router.delete(
     try {
       const { id } = req.params;
 
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
+      }
+
       const job = await JobPosting.findById(id);
       if (!job) {
         throw new AppError('Job posting not found.', 404, 'NOT_FOUND');
       }
 
       // Ownership verification
-      if (job.postedBy.toString() !== req.user!._id.toString()) {
+      if (job.hrId.toString() !== hr._id.toString()) {
         throw new AppError(
           'You do not have permission to delete this job posting.',
           403,

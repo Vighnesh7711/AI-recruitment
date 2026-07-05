@@ -3,18 +3,19 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IResume extends Document {
   candidateId: mongoose.Types.ObjectId;
   resumeUrl: string;
-  uploadDate: Date;
   extractedText?: string;
   atsScore?: number;
-  createdAt: Date;
-  updatedAt: Date;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  uploadDate: Date;
 }
 
 const ResumeSchema = new Schema<IResume>(
   {
     candidateId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Candidate',
       required: true,
       index: true,
     },
@@ -22,21 +23,29 @@ const ResumeSchema = new Schema<IResume>(
       type: String,
       required: true,
     },
+    extractedText: String,
+    atsScore: Number,
+    strengths: {
+      type: [String],
+      default: [],
+    },
+    weaknesses: {
+      type: [String],
+      default: [],
+    },
+    suggestions: {
+      type: [String],
+      default: [],
+    },
     uploadDate: {
       type: Date,
       default: Date.now,
       required: true,
     },
-    extractedText: {
-      type: String,
-    },
-    atsScore: {
-      type: Number,
-    },
   },
   {
-    timestamps: true,
+    timestamps: false,
   }
 );
 
-export const Resume = mongoose.model<IResume>('Resume', ResumeSchema);
+export const Resume = mongoose.model<IResume>('Resume', ResumeSchema, 'resumes');

@@ -1,88 +1,71 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IJobPosting extends Document {
+  hrId: mongoose.Types.ObjectId;
+  companyId: mongoose.Types.ObjectId;
   title: string;
+  domain: string;
+  experience: string;
+  skillsRequired: string[];
   description: string;
-  requirements: string[];
-  skills: string[];
-  department?: string;
-  location: string;
-  locationType: 'remote' | 'onsite' | 'hybrid';
-  employmentType: 'full-time' | 'part-time' | 'contract' | 'internship';
-  salaryMin?: number;
-  salaryMax?: number;
-  salaryCurrency?: string;
-  experienceLevel: 'entry' | 'mid' | 'senior' | 'lead' | 'executive';
-  companyId?: mongoose.Types.ObjectId;
-  postedBy: mongoose.Types.ObjectId;
-  status: 'draft' | 'active' | 'paused' | 'closed';
-  applicationDeadline?: Date;
-  applicationCount: number;
+  salary: string;
+  deadline: Date;
+  status: 'draft' | 'active' | 'closed';
   createdAt: Date;
   updatedAt: Date;
 }
 
 const JobPostingSchema = new Schema<IJobPosting>(
   {
+    hrId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Hr',
+      required: true,
+      index: true,
+    },
+    companyId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Company',
+      required: true,
+      index: true,
+    },
     title: {
       type: String,
       required: true,
       trim: true,
       index: true,
     },
+    domain: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    experience: {
+      type: String,
+      required: true,
+    },
+    skillsRequired: {
+      type: [String],
+      required: true,
+      default: [],
+    },
     description: {
       type: String,
       required: true,
     },
-    requirements: [{ type: String }],
-    skills: [{ type: String }],
-    department: String,
-    location: {
+    salary: {
       type: String,
       required: true,
     },
-    locationType: {
-      type: String,
-      enum: ['remote', 'onsite', 'hybrid'],
-      default: 'onsite',
-    },
-    employmentType: {
-      type: String,
-      enum: ['full-time', 'part-time', 'contract', 'internship'],
-      default: 'full-time',
-    },
-    salaryMin: Number,
-    salaryMax: Number,
-    salaryCurrency: {
-      type: String,
-      default: 'USD',
-    },
-    experienceLevel: {
-      type: String,
-      enum: ['entry', 'mid', 'senior', 'lead', 'executive'],
-      default: 'mid',
-    },
-    companyId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Company',
-      index: true,
-    },
-    postedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
+    deadline: {
+      type: Date,
       required: true,
-      index: true,
     },
     status: {
       type: String,
-      enum: ['draft', 'active', 'paused', 'closed'],
+      enum: ['draft', 'active', 'closed'],
       default: 'active',
       index: true,
-    },
-    applicationDeadline: Date,
-    applicationCount: {
-      type: Number,
-      default: 0,
     },
   },
   {
@@ -90,4 +73,4 @@ const JobPostingSchema = new Schema<IJobPosting>(
   }
 );
 
-export const JobPosting = mongoose.model<IJobPosting>('JobPosting', JobPostingSchema);
+export const JobPosting = mongoose.model<IJobPosting>('JobPosting', JobPostingSchema, 'job_postings');

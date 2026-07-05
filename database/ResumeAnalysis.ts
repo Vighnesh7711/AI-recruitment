@@ -4,13 +4,16 @@ export interface IResumeAnalysis extends Document {
   resumeId: mongoose.Types.ObjectId;
   applicationId?: mongoose.Types.ObjectId;
   atsScore: number;
+  grammarScore: number;
+  skillMatch: number;
+  experienceScore: number;
+  educationScore: number;
   matchedSkills: string[];
   missingSkills: string[];
   strengths: string[];
   weaknesses: string[];
   recommendations: string[];
   createdAt: Date;
-  updatedAt: Date;
 }
 
 const ResumeAnalysisSchema = new Schema<IResumeAnalysis>(
@@ -19,6 +22,7 @@ const ResumeAnalysisSchema = new Schema<IResumeAnalysis>(
       type: Schema.Types.ObjectId,
       ref: 'Resume',
       required: true,
+      unique: true,
       index: true,
     },
     applicationId: {
@@ -30,18 +34,50 @@ const ResumeAnalysisSchema = new Schema<IResumeAnalysis>(
       type: Number,
       required: true,
     },
-    matchedSkills: [String],
-    missingSkills: [String],
-    strengths: [String],
-    weaknesses: [String],
-    recommendations: [String],
+    grammarScore: {
+      type: Number,
+      required: true,
+    },
+    skillMatch: {
+      type: Number,
+      required: true,
+    },
+    experienceScore: {
+      type: Number,
+      required: true,
+    },
+    educationScore: {
+      type: Number,
+      required: true,
+    },
+    matchedSkills: {
+      type: [String],
+      default: [],
+    },
+    missingSkills: {
+      type: [String],
+      default: [],
+    },
+    strengths: {
+      type: [String],
+      default: [],
+    },
+    weaknesses: {
+      type: [String],
+      default: [],
+    },
+    recommendations: {
+      type: [String],
+      default: [],
+    },
   },
   {
-    timestamps: true,
+    timestamps: { createdAt: true, updatedAt: false },
   }
 );
 
 export const ResumeAnalysis = mongoose.model<IResumeAnalysis>(
   'ResumeAnalysis',
-  ResumeAnalysisSchema
+  ResumeAnalysisSchema,
+  'resume_analysis'
 );

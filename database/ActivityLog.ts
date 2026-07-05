@@ -1,14 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IActivityLog extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId;
   action: string;
-  resource: string;
-  resourceId?: string;
-  details?: Record<string, unknown>;
+  timestamp: Date;
   ipAddress?: string;
-  userAgent?: string;
-  createdAt: Date;
 }
 
 const ActivityLogSchema = new Schema<IActivityLog>(
@@ -16,7 +12,6 @@ const ActivityLogSchema = new Schema<IActivityLog>(
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
       index: true,
     },
     action: {
@@ -24,21 +19,19 @@ const ActivityLogSchema = new Schema<IActivityLog>(
       required: true,
       index: true,
     },
-    resource: {
-      type: String,
+    timestamp: {
+      type: Date,
+      default: Date.now,
       required: true,
     },
-    resourceId: String,
-    details: Schema.Types.Mixed,
     ipAddress: String,
-    userAgent: String,
   },
   {
-    timestamps: { createdAt: true, updatedAt: false },
+    timestamps: false,
   }
 );
 
 // TTL index: auto-delete logs older than 90 days
-ActivityLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
+ActivityLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
-export const ActivityLog = mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema);
+export const ActivityLog = mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema, 'activity_logs');

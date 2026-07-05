@@ -11,16 +11,24 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { connectDB } from './connection';
-
-// Import all models to ensure schemas are registered
-import { User } from './User';
-import { Company } from './Company';
-import { JobPosting } from './JobPosting';
-import { Application } from './Application';
-import { Interview } from './Interview';
-import { InterviewEvaluation } from './InterviewEvaluation';
-import { Notification } from './Notification';
-import { ActivityLog } from './ActivityLog';
+import {
+  User,
+  Company,
+  JobPosting,
+  Application,
+  Interview,
+  InterviewEvaluation,
+  Notification,
+  ActivityLog,
+  Hr,
+  Candidate,
+  Resume,
+  ResumeAnalysis,
+  QuestionBank,
+  QuestionResponse,
+  InterviewReminder,
+  EmailNotification,
+} from './index';
 
 import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../server/.env') });
@@ -30,179 +38,186 @@ async function seed() {
 
   await connectDB();
 
-  console.log('\n[1/8] Creating User...');
-  const user = await User.create({
-    email: 'seed-admin@test.com',
+  console.log('\n[1/16] Creating HR User...');
+  const hrUser = await User.create({
+    email: 'seed-hr@test.com',
     passwordHash: '$2b$10$dummyHashForSeedingOnly1234567890abcdefgh',
-    fullName: 'Seed Admin',
-    role: 'admin',
-    phone: '+1-555-0100',
-    isActive: true,
+    role: 'hr',
   });
-  console.log(`  -> User created: ${user._id} (${user.email})`);
+  console.log(`  -> HR User created: ${hrUser._id} (${hrUser.email})`);
 
-  console.log('\n[2/8] Creating Company...');
+  console.log('\n[2/16] Creating Company...');
   const company = await Company.create({
-    name: 'Seed Corp',
-    description: 'A seed test company',
+    companyName: 'Seed Corp',
     website: 'https://seedcorp.example.com',
     industry: 'Technology',
-    size: '51-200',
-    location: 'San Francisco, CA',
-    createdBy: user._id,
+    logo: 'https://seedcorp.example.com/logo.png',
   });
-  console.log(`  -> Company created: ${company._id} (${company.name})`);
+  console.log(`  -> Company created: ${company._id} (${company.companyName})`);
 
-  // Update user with companyId
-  await User.findByIdAndUpdate(user._id, { companyId: company._id });
-
-  console.log('\n[3/8] Creating JobPosting...');
-  const job = await JobPosting.create({
-    title: 'Senior TypeScript Developer',
-    description: 'We are looking for a senior TypeScript developer to join our team.',
-    requirements: [
-      '5+ years of TypeScript experience',
-      'React or Angular experience',
-      'Node.js backend experience',
-    ],
-    skills: ['TypeScript', 'React', 'Node.js', 'MongoDB', 'REST APIs'],
-    department: 'Engineering',
-    location: 'Remote',
-    locationType: 'remote',
-    employmentType: 'full-time',
-    salaryMin: 120000,
-    salaryMax: 180000,
-    salaryCurrency: 'USD',
-    experienceLevel: 'senior',
+  console.log('\n[3/16] Creating HR Profile...');
+  const hrProfile = await Hr.create({
+    userId: hrUser._id,
+    name: 'Seed HR Recruiter',
     companyId: company._id,
-    postedBy: user._id,
+    phone: '+1-555-0100',
+  });
+  console.log(`  -> HR Profile created: ${hrProfile._id} (${hrProfile.name})`);
+
+  console.log('\n[4/16] Creating JobPosting...');
+  const job = await JobPosting.create({
+    hrId: hrProfile._id,
+    companyId: company._id,
+    title: 'Senior TypeScript Developer',
+    domain: 'Engineering',
+    experience: 'Senior',
+    skillsRequired: ['TypeScript', 'React', 'Node.js', 'MongoDB'],
+    description: 'We are looking for a senior TypeScript developer to join our team.',
+    salary: '$120,000 - $150,000',
+    deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     status: 'active',
-    applicationDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    applicationCount: 0,
   });
   console.log(`  -> JobPosting created: ${job._id} (${job.title})`);
 
-  // Create a candidate user for the application
-  const candidate = await User.create({
+  console.log('\n[5/16] Creating Candidate User...');
+  const candidateUser = await User.create({
     email: 'seed-candidate@test.com',
     passwordHash: '$2b$10$dummyHashForSeedingOnly1234567890abcdefgh',
-    fullName: 'Jane Candidate',
     role: 'candidate',
-    phone: '+1-555-0200',
-    isActive: true,
   });
-  console.log(`  -> Candidate user created: ${candidate._id}`);
+  console.log(`  -> Candidate User created: ${candidateUser._id}`);
 
-  console.log('\n[4/8] Creating Application...');
-  const application = await Application.create({
-    jobId: job._id,
-    candidateId: candidate._id,
-    resumePath: '/uploads/seed-resume.pdf',
-    resumeOriginalName: 'jane_candidate_resume.pdf',
-    coverLetter: 'I am excited to apply for this position...',
-    parsedResume: {
-      name: 'Jane Candidate',
-      experience: '6 years',
-      skills: ['TypeScript', 'React', 'Node.js'],
-    },
+  console.log('\n[6/16] Creating Candidate Profile...');
+  const candidateProfile = await Candidate.create({
+    userId: candidateUser._id,
+    name: 'Jane Candidate',
+    phone: '+1-555-0200',
+  });
+  console.log(`  -> Candidate Profile created: ${candidateProfile._id}`);
+
+  console.log('\n[7/16] Creating Resume...');
+  const resume = await Resume.create({
+    candidateId: candidateProfile._id,
+    resumeUrl: 'https://cloudinary.com/seed-resume.pdf',
     atsScore: 78,
-    atsAnalysis: {
-      overallScore: 78,
-      matchedSkills: ['TypeScript', 'React', 'Node.js'],
-      missingSkills: ['MongoDB'],
-      experienceMatch: 85,
-      educationMatch: 70,
-      strengths: ['Strong frontend skills', 'Good communication'],
-      weaknesses: ['Limited database experience'],
-      recommendations: ['Gain MongoDB experience'],
-    },
+    strengths: ['TypeScript', 'React'],
+    weaknesses: ['SQL'],
+    suggestions: ['Learn SQL'],
+    extractedText: 'Jane Candidate CV...',
+    uploadDate: new Date(),
+  });
+  console.log(`  -> Resume created: ${resume._id}`);
+
+  console.log('\n[8/16] Creating Application...');
+  const application = await Application.create({
+    candidateId: candidateProfile._id,
+    jobId: job._id,
+    resumeId: resume._id,
     status: 'shortlisted',
-    finalScore: 82.4,
-    reviewedBy: user._id,
-    reviewedAt: new Date(),
+    appliedOn: new Date(),
   });
   console.log(`  -> Application created: ${application._id}`);
 
-  console.log('\n[5/8] Creating Interview...');
+  console.log('\n[9/16] Creating ResumeAnalysis...');
+  const analysis = await ResumeAnalysis.create({
+    resumeId: resume._id,
+    applicationId: application._id,
+    atsScore: 78,
+    grammarScore: 85,
+    skillMatch: 80,
+    experienceScore: 75,
+    educationScore: 90,
+    matchedSkills: ['TypeScript', 'React'],
+    missingSkills: ['SQL'],
+    strengths: ['TypeScript', 'React'],
+    weaknesses: ['SQL'],
+    recommendations: ['Learn SQL'],
+  });
+  console.log(`  -> ResumeAnalysis created: ${analysis._id}`);
+
+  console.log('\n[10/16] Creating Interview...');
   const interview = await Interview.create({
     applicationId: application._id,
-    candidateId: candidate._id,
-    jobId: job._id,
-    token: `seed-token-${Date.now()}`,
-    status: 'completed',
-    scheduledAt: new Date(),
-    startedAt: new Date(),
-    completedAt: new Date(),
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    questions: [
-      {
-        questionId: 'q1',
-        text: 'Explain the difference between interface and type in TypeScript.',
-        category: 'technical',
-        weight: 2,
-        candidateAnswer:
-          'An interface is extensible through declaration merging while type aliases use intersections...',
-        aiScore: 85,
-        aiFeedback: 'Solid understanding of TypeScript type system.',
-      },
-      {
-        questionId: 'q2',
-        text: 'Describe a challenging project you led.',
-        category: 'behavioral',
-        weight: 1,
-        candidateAnswer:
-          'I led a migration from JavaScript to TypeScript for a 200k LOC codebase...',
-        aiScore: 90,
-        aiFeedback: 'Excellent leadership and technical decision-making.',
-      },
-    ],
-    interviewType: 'ai_avatar',
-    duration: 45,
-    invitedBy: user._id,
+    schedule: new Date(),
+    durationMinutes: 45,
+    meetingLink: 'https://meet.jit.si/seed-interview',
+    reminderSent: false,
+    overallScore: 85,
+    result: 'pending',
   });
   console.log(`  -> Interview created: ${interview._id}`);
 
-  console.log('\n[6/8] Creating InterviewEvaluation...');
+  console.log('\n[11/16] Creating QuestionBank...');
+  const questionBank = await QuestionBank.create({
+    domain: 'Engineering',
+    difficulty: 'medium',
+    question: 'Explain JavaScript closures.',
+    expectedAnswer: 'A closure is the combination of a function bundled together with references to its surrounding state...',
+    keywords: ['closure', 'scope', 'lexical'],
+  });
+  console.log(`  -> QuestionBank created: ${questionBank._id}`);
+
+  console.log('\n[12/16] Creating QuestionResponse...');
+  const questionResponse = await QuestionResponse.create({
+    interviewId: interview._id,
+    questionId: questionBank._id,
+    questionOrder: 1,
+    answer: 'A closure lets a function access outer scope variables...',
+    aiScore: 85,
+    feedback: 'Good description of lexical scope.',
+    confidence: 90,
+  });
+  console.log(`  -> QuestionResponse created: ${questionResponse._id}`);
+
+  console.log('\n[13/16] Creating InterviewEvaluation...');
   const evaluation = await InterviewEvaluation.create({
     interviewId: interview._id,
-    applicationId: application._id,
-    candidateId: candidate._id,
     technicalScore: 85,
-    communicationScore: 88,
-    problemSolvingScore: 82,
-    cultureFitScore: 90,
-    confidenceScore: 87,
-    overallInterviewScore: 86,
-    atsScore: 78,
-    finalWeightedScore: 0.3 * 78 + 0.7 * 86, // 83.6
-    strengths: ['Strong TypeScript knowledge', 'Great communication'],
-    weaknesses: ['Limited MongoDB experience'],
-    summary: 'Strong candidate with excellent frontend skills and leadership experience.',
+    communicationScore: 90,
+    confidenceScore: 88,
+    grammarScore: 85,
+    problemSolvingScore: 80,
+    behavioralScore: 85,
+    overallScore: 85,
     recommendation: 'hire',
-    hrDecision: 'pending',
+    feedback: 'Strong performance across technical and communication categories.',
   });
   console.log(`  -> InterviewEvaluation created: ${evaluation._id}`);
 
-  console.log('\n[7/8] Creating Notification...');
+  console.log('\n[14/16] Creating InterviewReminder...');
+  const reminder = await InterviewReminder.create({
+    interviewId: interview._id,
+    scheduledTime: new Date(),
+    emailSent: false,
+    whatsappSent: false,
+    smsSent: false,
+  });
+  console.log(`  -> InterviewReminder created: ${reminder._id}`);
+
+  console.log('\n[15/16] Creating EmailNotification...');
+  const emailNotification = await EmailNotification.create({
+    to: 'candidate@test.com',
+    subject: 'Interview Scheduled',
+    body: 'Your interview has been scheduled.',
+    status: 'sent',
+    sentAt: new Date(),
+  });
+  console.log(`  -> EmailNotification created: ${emailNotification._id}`);
+
+  console.log('\n[16/16] Creating Notification...');
   const notification = await Notification.create({
-    userId: candidate._id,
+    userId: candidateUser._id,
     title: 'Application Shortlisted',
     message: 'Your application for Senior TypeScript Developer has been shortlisted!',
-    type: 'application_update',
-    link: '/applications',
     isRead: false,
   });
   console.log(`  -> Notification created: ${notification._id}`);
 
-  console.log('\n[8/8] Creating ActivityLog...');
+  console.log('\nCreating ActivityLog...');
   const activityLog = await ActivityLog.create({
-    userId: user._id,
+    userId: hrUser._id,
     action: 'SEED_DATABASE',
-    resource: 'system',
-    resourceId: 'seed-script',
-    details: { seededAt: new Date().toISOString(), collections: 8 },
-    ipAddress: '127.0.0.1',
-    userAgent: 'seed-script/1.0',
+    details: { seededAt: new Date().toISOString(), collections: 16 },
   });
   console.log(`  -> ActivityLog created: ${activityLog._id}`);
 
@@ -211,12 +226,20 @@ async function seed() {
   const collections = [
     { name: 'users', model: User },
     { name: 'companies', model: Company },
+    { name: 'hr', model: Hr },
+    { name: 'candidates', model: Candidate },
     { name: 'jobpostings', model: JobPosting },
+    { name: 'resumes', model: Resume },
     { name: 'applications', model: Application },
+    { name: 'resume_analyses', model: ResumeAnalysis },
     { name: 'interviews', model: Interview },
+    { name: 'question_banks', model: QuestionBank },
+    { name: 'question_responses', model: QuestionResponse },
     { name: 'interview_evaluations', model: InterviewEvaluation },
+    { name: 'interview_reminders', model: InterviewReminder },
+    { name: 'email_notifications', model: EmailNotification },
     { name: 'notifications', model: Notification },
-    { name: 'activitylogs', model: ActivityLog },
+    { name: 'activity_logs', model: ActivityLog },
   ];
 
   for (const { name, model } of collections) {
@@ -230,13 +253,20 @@ async function seed() {
   console.log('\n--- Cleaning Up Seed Data ---');
   await ActivityLog.deleteOne({ _id: activityLog._id });
   await Notification.deleteOne({ _id: notification._id });
+  await EmailNotification.deleteOne({ _id: emailNotification._id });
+  await InterviewReminder.deleteOne({ _id: reminder._id });
   await InterviewEvaluation.deleteOne({ _id: evaluation._id });
+  await QuestionResponse.deleteOne({ _id: questionResponse._id });
+  await QuestionBank.deleteOne({ _id: questionBank._id });
   await Interview.deleteOne({ _id: interview._id });
+  await ResumeAnalysis.deleteOne({ _id: analysis._id });
   await Application.deleteOne({ _id: application._id });
-  await JobPosting.deleteOne({ _id: job._id });
+  await Resume.deleteOne({ _id: resume._id });
+  await Candidate.deleteOne({ _id: candidateProfile._id });
+  await Hr.deleteOne({ _id: hrProfile._id });
   await Company.deleteOne({ _id: company._id });
   await User.deleteMany({
-    email: { $in: ['seed-admin@test.com', 'seed-candidate@test.com'] },
+    email: { $in: ['seed-hr@test.com', 'seed-candidate@test.com'] },
   });
   console.log('  -> All seed data removed.');
 

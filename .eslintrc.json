@@ -16,5 +16,5 @@
     "@typescript-eslint/no-explicit-any": "warn",
     "no-console": "off"
   },
-  "ignorePatterns": ["node_modules", "dist", "build", ".next"]
+  "ignorePatterns": ["node_modules", "dist", "build", ".next", "database/**/*.js", "database/**/*.d.ts"]
 }

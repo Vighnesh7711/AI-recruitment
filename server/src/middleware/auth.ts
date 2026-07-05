@@ -4,6 +4,7 @@ import { User, IUser } from '../../../database';
 import { AppError } from '../utils/errors';
 
 // Extend Express Request interface to include the user property
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace Express {
     interface Request {
@@ -11,6 +12,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 /**
  * Middleware to require JWT authentication.
@@ -45,10 +47,6 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new AppError('User not found.', 401, 'UNAUTHORIZED');
     }
 
-    if (!user.isActive) {
-      throw new AppError('User account is deactivated.', 403, 'FORBIDDEN');
-    }
-
     req.user = user;
     next();
   } catch (error) {
@@ -60,7 +58,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
  * Middleware to restrict access based on roles.
  * Must be used AFTER requireAuth.
  */
-export function requireRole(...allowedRoles: ('admin' | 'hr' | 'candidate')[]) {
+export function requireRole(...allowedRoles: ('hr' | 'candidate')[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     try {
       if (!req.user) {

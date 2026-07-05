@@ -2,26 +2,16 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IInterviewEvaluation extends Document {
   interviewId: mongoose.Types.ObjectId;
-  applicationId: mongoose.Types.ObjectId;
-  candidateId: mongoose.Types.ObjectId;
   technicalScore: number;
   communicationScore: number;
-  problemSolvingScore: number;
-  cultureFitScore: number;
   confidenceScore: number;
-  overallInterviewScore: number;
-  atsScore: number;
-  finalWeightedScore: number;
-  strengths: string[];
-  weaknesses: string[];
-  summary: string;
-  recommendation: 'strong_hire' | 'hire' | 'maybe' | 'no_hire' | 'strong_no_hire';
-  hrDecision?: 'approved' | 'rejected' | 'pending';
-  hrNotes?: string;
-  decidedBy?: mongoose.Types.ObjectId;
-  decidedAt?: Date;
+  grammarScore: number;
+  problemSolvingScore: number;
+  behavioralScore: number;
+  overallScore: number;
+  recommendation: string;
+  feedback: string;
   createdAt: Date;
-  updatedAt: Date;
 }
 
 const InterviewEvaluationSchema = new Schema<IInterviewEvaluation>(
@@ -33,94 +23,45 @@ const InterviewEvaluationSchema = new Schema<IInterviewEvaluation>(
       unique: true,
       index: true,
     },
-    applicationId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Application',
-      required: true,
-      index: true,
-    },
-    candidateId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
-    },
     technicalScore: {
       type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
+      required: true,
     },
     communicationScore: {
       type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
-    },
-    problemSolvingScore: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
-    },
-    cultureFitScore: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
+      required: true,
     },
     confidenceScore: {
       type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
+      required: true,
     },
-    overallInterviewScore: {
+    grammarScore: {
       type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
+      required: true,
     },
-    atsScore: {
+    problemSolvingScore: {
       type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
+      required: true,
     },
-    // finalWeightedScore = 0.3 * atsScore + 0.7 * overallInterviewScore
-    finalWeightedScore: {
+    behavioralScore: {
       type: Number,
-      min: 0,
-      max: 100,
-      default: 0,
+      required: true,
     },
-    strengths: [String],
-    weaknesses: [String],
-    summary: {
-      type: String,
-      default: '',
+    overallScore: {
+      type: Number,
+      required: true,
     },
     recommendation: {
       type: String,
-      enum: ['strong_hire', 'hire', 'maybe', 'no_hire', 'strong_no_hire'],
-      default: 'maybe',
+      required: true,
     },
-    hrDecision: {
+    feedback: {
       type: String,
-      enum: ['approved', 'rejected', 'pending'],
-      default: 'pending',
-      index: true,
+      required: true,
     },
-    hrNotes: String,
-    decidedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      index: true,
-    },
-    decidedAt: Date,
   },
   {
-    timestamps: true,
+    timestamps: { createdAt: true, updatedAt: false },
   }
 );
 

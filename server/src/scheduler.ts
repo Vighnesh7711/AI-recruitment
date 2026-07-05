@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import axios from 'axios';
-import { InterviewReminder, Interview, User, JobPosting, Company } from '../../database';
+import { InterviewReminder, Interview, User, JobPosting, Company, Candidate, Hr, Application } from '../../database';
 import logger from './lib/logger';
 
 export function startScheduler() {
@@ -12,7 +12,7 @@ export function startScheduler() {
       // Find reminders that are due and not yet sent
       const pendingReminders = await InterviewReminder.find({
         scheduledTime: { $lte: now },
-        $or: [{ candidateEmailSent: false }, { hrEmailSent: false }],
+        emailSent: false,
       });
 
       if (pendingReminders.length === 0) {
@@ -28,42 +28,47 @@ export function startScheduler() {
           const interview = await Interview.findById(reminder.interviewId);
           if (!interview) {
             logger.warn(`[Scheduler] Interview not found for reminder ${reminder._id}. Skipping.`);
-            // Mark as sent to prevent infinite retries
-            reminder.candidateEmailSent = true;
-            reminder.hrEmailSent = true;
+            reminder.emailSent = true;
             await reminder.save();
             continue;
           }
 
-          if (interview.status === 'cancelled' || interview.status === 'expired') {
+          if (interview.result === 'rejected') {
             logger.info(
-              `[Scheduler] Interview status is ${interview.status} for reminder ${reminder._id}. Skipping.`
+              `[Scheduler] Interview status is rejected for reminder ${reminder._id}. Skipping.`
             );
-            reminder.candidateEmailSent = true;
-            reminder.hrEmailSent = true;
+            reminder.emailSent = true;
             await reminder.save();
             continue;
           }
 
-          if (!interview.scheduledAt) {
-            logger.warn(`[Scheduler] Interview ${interview._id} has no scheduled time. Skipping.`);
-            reminder.candidateEmailSent = true;
-            reminder.hrEmailSent = true;
+          if (!interview.schedule) {
+            logger.warn(`[Scheduler] Interview ${interview._id} has no schedule time. Skipping.`);
+            reminder.emailSent = true;
             await reminder.save();
             continue;
           }
 
           // Fetch details
-          const candidate = await User.findById(interview.candidateId);
-          const hr = await User.findById(interview.invitedBy);
-          const job = await JobPosting.findById(interview.jobId);
+          const application = await Application.findById(interview.applicationId);
+          if (!application) {
+            logger.warn(`[Scheduler] Application not found for interview ${interview._id}. Skipping.`);
+            reminder.emailSent = true;
+            await reminder.save();
+            continue;
+          }
 
-          if (!candidate || !hr || !job) {
+          const candidate = await Candidate.findById(application.candidateId);
+          const candidateUser = candidate ? await User.findById(candidate.userId) : null;
+          const job = await JobPosting.findById(application.jobId);
+          const hr = job ? await Hr.findById(job.hrId) : null;
+          const hrUser = hr ? await User.findById(hr.userId) : null;
+
+          if (!candidate || !candidateUser || !hr || !hrUser || !job) {
             logger.warn(
               `[Scheduler] Missing candidate, hr, or job details for reminder ${reminder._id}. Skipping.`
             );
-            reminder.candidateEmailSent = true;
-            reminder.hrEmailSent = true;
+            reminder.emailSent = true;
             await reminder.save();
             continue;
           }
@@ -72,7 +77,7 @@ export function startScheduler() {
           if (job.companyId) {
             const company = await Company.findById(job.companyId);
             if (company) {
-              companyName = company.name;
+              companyName = company.companyName;
             }
           }
 
@@ -85,16 +90,16 @@ export function startScheduler() {
                 reminderId: reminder._id.toString(),
                 interviewId: interview._id.toString(),
                 candidateId: candidate._id.toString(),
-                candidateEmail: candidate.email,
-                candidateName: candidate.fullName,
-                hrEmail: hr.email,
-                hrName: hr.fullName,
-                schedule: interview.scheduledAt.toISOString(),
-                durationMinutes: interview.duration,
+                candidateEmail: candidateUser.email,
+                candidateName: candidate.name,
+                hrEmail: hrUser.email,
+                hrName: hr.name,
+                schedule: interview.schedule.toISOString(),
+                durationMinutes: interview.durationMinutes,
                 jobTitle: job.title,
                 companyName,
-                candidateEmailSent: reminder.candidateEmailSent,
-                hrEmailSent: reminder.hrEmailSent,
+                candidateEmailSent: reminder.emailSent,
+                hrEmailSent: reminder.emailSent,
               },
               { timeout: 5000 }
             );
@@ -105,8 +110,9 @@ export function startScheduler() {
           }
 
           // Update reminder flags
-          reminder.candidateEmailSent = true;
-          reminder.hrEmailSent = true;
+          reminder.emailSent = true;
+          reminder.whatsappSent = true;
+          reminder.smsSent = true;
           await reminder.save();
         } catch (reminderErr: any) {
           logger.error(

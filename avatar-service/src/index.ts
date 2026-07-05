@@ -101,7 +101,7 @@ async function runRhubarbOrSimulate(audioBuffer: Buffer, text: string, duration:
     // clean up files
     [mp3Path, wavPath, jsonPath].forEach((p) => {
       if (fs.existsSync(p)) {
-        try { fs.unlinkSync(p); } catch {}
+        try { fs.unlinkSync(p); } catch (e) { /* ignore */ }
       }
     });
   }
@@ -265,7 +265,7 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
         );
 
         transcript = whisperResponse.data.text || '';
-        try { fs.unlinkSync(tempPath); } catch {}
+        try { fs.unlinkSync(tempPath); } catch (e) { /* ignore */ }
       } catch (err: any) {
         console.error('Whisper transcription failed, using mock:', err.message);
         transcript = "Sample response about key technical achievements and React application design.";

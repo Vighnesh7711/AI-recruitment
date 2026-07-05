@@ -184,7 +184,7 @@ export function CandidateApplications() {
             <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-white mb-1">No Applications</h3>
             <p className="text-slate-400 text-sm max-w-xs mx-auto mb-6">
-              You haven't applied to any job postings yet. Find open positions on the job board.
+              You haven&apos;t applied to any job postings yet. Find open positions on the job board.
             </p>
           </div>
         ) : (

@@ -4,19 +4,8 @@ export interface INotification extends Document {
   userId: mongoose.Types.ObjectId;
   title: string;
   message: string;
-  type:
-    | 'info'
-    | 'success'
-    | 'warning'
-    | 'error'
-    | 'application_update'
-    | 'interview_invite'
-    | 'evaluation_ready';
-  link?: string;
   isRead: boolean;
-  readAt?: Date;
   createdAt: Date;
-  updatedAt: Date;
 }
 
 const NotificationSchema = new Schema<INotification>(
@@ -35,30 +24,15 @@ const NotificationSchema = new Schema<INotification>(
       type: String,
       required: true,
     },
-    type: {
-      type: String,
-      enum: [
-        'info',
-        'success',
-        'warning',
-        'error',
-        'application_update',
-        'interview_invite',
-        'evaluation_ready',
-      ],
-      default: 'info',
-    },
-    link: String,
     isRead: {
       type: Boolean,
       default: false,
-      index: true,
+      required: true,
     },
-    readAt: Date,
   },
   {
-    timestamps: true,
+    timestamps: { createdAt: true, updatedAt: false },
   }
 );
 
-export const Notification = mongoose.model<INotification>('Notification', NotificationSchema);
+export const Notification = mongoose.model<INotification>('Notification', NotificationSchema, 'notifications');

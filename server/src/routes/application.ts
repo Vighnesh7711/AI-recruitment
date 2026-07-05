@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import { Application, JobPosting, Resume, User, Company } from '../../../database';
+import { Application, JobPosting, Resume, User, Company, Candidate, Hr } from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
 import logger from '../lib/logger';
@@ -10,7 +10,6 @@ const router = Router();
 /**
  * POST /application
  * Body: { jobId, resumeId }
- * Submits an application for the logged-in candidate to a specific job listing.
  */
 router.post(
   '/',
@@ -22,6 +21,11 @@ router.post(
 
       if (!jobId || !resumeId) {
         throw new AppError('jobId and resumeId are required.', 400, 'VALIDATION_ERROR');
+      }
+
+      const candidate = await Candidate.findOne({ userId: req.user!._id });
+      if (!candidate) {
+        throw new AppError('Candidate profile not found.', 404, 'NOT_FOUND');
       }
 
       // 1. Verify job is active
@@ -42,12 +46,12 @@ router.post(
       if (!resume) {
         throw new AppError('Resume not found.', 404, 'NOT_FOUND');
       }
-      if (resume.candidateId.toString() !== req.user!._id.toString()) {
+      if (resume.candidateId.toString() !== candidate._id.toString()) {
         throw new AppError('This resume does not belong to you.', 403, 'FORBIDDEN');
       }
 
       // 3. Verify no existing application
-      const existing = await Application.findOne({ jobId, candidateId: req.user!._id });
+      const existing = await Application.findOne({ jobId, candidateId: candidate._id });
       if (existing) {
         throw new AppError('You have already applied for this job.', 409, 'ALREADY_APPLIED');
       }
@@ -55,9 +59,10 @@ router.post(
       // 4. Create the application
       const application = await Application.create({
         jobId,
-        candidateId: req.user!._id,
-        resumePath: resume.resumeUrl,
+        candidateId: candidate._id,
+        resumeId: resume._id,
         status: 'applied',
+        appliedOn: new Date(),
       });
 
       res.status(201).json(application);
@@ -73,7 +78,6 @@ router.post(
 
 /**
  * GET /application/mine
- * Retrieves all applications submitted by the logged-in candidate.
  */
 router.get(
   '/mine',
@@ -81,18 +85,49 @@ router.get(
   requireRole('candidate'),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const applications = await Application.find({ candidateId: req.user!._id })
+      const candidate = await Candidate.findOne({ userId: req.user!._id });
+      if (!candidate) {
+        res.json([]);
+        return;
+      }
+
+      const applications = await Application.find({ candidateId: candidate._id })
         .populate({
           path: 'jobId',
-          select: 'title department location companyId',
+          select: 'title domain location companyId',
           populate: {
             path: 'companyId',
-            select: 'name logoUrl',
+            select: 'companyName logo',
           },
         })
-        .sort({ createdAt: -1 });
+        .sort({ appliedOn: -1 });
 
-      res.json(applications);
+      const response = applications.map((app) => {
+        const jobObj: any = app.jobId;
+        const companyObj: any = jobObj ? jobObj.companyId : null;
+        return {
+          _id: app._id,
+          status: app.status,
+          appliedOn: app.appliedOn,
+          createdAt: app.appliedOn,
+          jobId: jobObj ? {
+            _id: jobObj._id,
+            title: jobObj.title,
+            domain: jobObj.domain,
+            department: jobObj.domain,
+            location: jobObj.location,
+            companyId: companyObj ? {
+              _id: companyObj._id,
+              name: companyObj.companyName,
+              companyName: companyObj.companyName,
+              logoUrl: companyObj.logo,
+              logo: companyObj.logo,
+            } : null,
+          } : null,
+        };
+      });
+
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -101,7 +136,6 @@ router.get(
 
 /**
  * GET /application
- * Restricted to HR. Returns all candidate applications submitted for jobs posted by this HR.
  */
 router.get(
   '/',
@@ -109,15 +143,67 @@ router.get(
   requireRole('hr'),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const jobs = await JobPosting.find({ postedBy: req.user!._id });
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
+      }
+
+      const jobs = await JobPosting.find({ hrId: hr._id });
       const jobIds = jobs.map((j) => j._id);
 
       const applications = await Application.find({ jobId: { $in: jobIds } })
-        .populate('candidateId', 'fullName email phone')
-        .populate('jobId', 'title department location')
-        .sort({ createdAt: -1 });
+        .populate({
+          path: 'candidateId',
+          populate: {
+            path: 'userId',
+            select: 'email',
+          },
+        })
+        .populate({
+          path: 'jobId',
+          select: 'title domain location companyId',
+          populate: {
+            path: 'companyId',
+            select: 'companyName logo',
+          },
+        })
+        .sort({ appliedOn: -1 });
 
-      res.json(applications);
+      const response = applications.map((app) => {
+        const cand: any = app.candidateId;
+        const jobObj: any = app.jobId;
+        const companyObj: any = jobObj ? jobObj.companyId : null;
+        const userObj: any = cand ? cand.userId : null;
+        return {
+          _id: app._id,
+          status: app.status,
+          appliedOn: app.appliedOn,
+          createdAt: app.appliedOn,
+          candidateId: cand ? {
+            _id: cand._id,
+            fullName: cand.name,
+            name: cand.name,
+            email: userObj ? userObj.email : '',
+            phone: cand.phone || '',
+          } : null,
+          jobId: jobObj ? {
+            _id: jobObj._id,
+            title: jobObj.title,
+            domain: jobObj.domain,
+            department: jobObj.domain,
+            location: jobObj.location,
+            companyId: companyObj ? {
+              _id: companyObj._id,
+              name: companyObj.companyName,
+              companyName: companyObj.companyName,
+              logoUrl: companyObj.logo,
+              logo: companyObj.logo,
+            } : null,
+          } : null,
+        };
+      });
+
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -126,7 +212,6 @@ router.get(
 
 /**
  * GET /application/:id
- * Retrieve specific application details (with candidate ownership check).
  */
 router.get(
   '/:id',
@@ -136,13 +221,17 @@ router.get(
     try {
       const { id } = req.params;
 
+      const candidate = await Candidate.findOne({ userId: req.user!._id });
+      if (!candidate) {
+        throw new AppError('Candidate profile not found.', 404, 'NOT_FOUND');
+      }
+
       const application = await Application.findById(id).populate({
         path: 'jobId',
-        select:
-          'title department location locationType employmentType salaryMax description companyId',
+        select: 'title domain location description companyId',
         populate: {
           path: 'companyId',
-          select: 'name logoUrl website industry',
+          select: 'companyName logo website industry',
         },
       });
 
@@ -151,7 +240,7 @@ router.get(
       }
 
       // Ownership check: must be candidate's own application
-      if (application.candidateId.toString() !== req.user!._id.toString()) {
+      if (application.candidateId.toString() !== candidate._id.toString()) {
         throw new AppError(
           'You do not have permission to view this application.',
           403,
@@ -159,7 +248,34 @@ router.get(
         );
       }
 
-      res.json(application);
+      const jobObj: any = application.jobId;
+      const companyObj: any = jobObj ? jobObj.companyId : null;
+
+      const response = {
+        _id: application._id,
+        status: application.status,
+        appliedOn: application.appliedOn,
+        createdAt: application.appliedOn,
+        jobId: jobObj ? {
+          _id: jobObj._id,
+          title: jobObj.title,
+          domain: jobObj.domain,
+          department: jobObj.domain,
+          location: jobObj.location,
+          description: jobObj.description,
+          companyId: companyObj ? {
+            _id: companyObj._id,
+            name: companyObj.companyName,
+            companyName: companyObj.companyName,
+            logoUrl: companyObj.logo,
+            logo: companyObj.logo,
+            website: companyObj.website,
+            industry: companyObj.industry,
+          } : null,
+        } : null,
+      };
+
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -168,8 +284,6 @@ router.get(
 
 /**
  * PATCH /application/:id/status
- * Body: { status: 'shortlisted' | 'rejected' }
- * Restricts updates to the HR who posted the corresponding job posting.
  */
 router.patch(
   '/:id/status',
@@ -184,6 +298,11 @@ router.patch(
         throw new AppError('Status must be shortlisted or rejected.', 400, 'VALIDATION_ERROR');
       }
 
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
+      }
+
       const application = await Application.findById(id);
       if (!application) {
         throw new AppError('Application not found.', 404, 'NOT_FOUND');
@@ -195,7 +314,7 @@ router.patch(
       }
 
       // Check if current HR is the one who posted the job
-      if (job.postedBy.toString() !== req.user!._id.toString()) {
+      if (job.hrId.toString() !== hr._id.toString()) {
         throw new AppError(
           'You do not have permission to update the status of this application.',
           403,
@@ -218,7 +337,6 @@ router.patch(
 
 /**
  * POST /application/:id/send-offer
- * Triggers sending an offer email to the candidate. Restricted to the HR owning the job.
  */
 router.post(
   '/:id/send-offer',
@@ -227,6 +345,12 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
+      }
+
       const application = await Application.findById(id);
       if (!application) {
         throw new AppError('Application not found.', 404, 'NOT_FOUND');
@@ -238,7 +362,7 @@ router.post(
       }
 
       // Check HR ownership
-      if (job.postedBy.toString() !== req.user!._id.toString()) {
+      if (job.hrId.toString() !== hr._id.toString()) {
         throw new AppError(
           'You do not have permission to send an offer for this application.',
           403,
@@ -246,7 +370,7 @@ router.post(
         );
       }
 
-      const candidate = await User.findById(application.candidateId);
+      const candidate = await Candidate.findById(application.candidateId).populate('userId');
       if (!candidate) {
         throw new AppError('Candidate not found.', 404, 'NOT_FOUND');
       }
@@ -255,24 +379,25 @@ router.post(
       if (job.companyId) {
         const company = await Company.findById(job.companyId);
         if (company) {
-          companyName = company.name;
+          companyName = company.companyName;
         }
       }
 
-      // Update status to offered
-      application.status = 'offered';
+      // Update status to selected
+      application.status = 'selected';
       await application.save();
 
       // Trigger N8N offer webhook
       const webhookUrl = process.env.N8N_WEBHOOK_OFFER;
       if (webhookUrl) {
         try {
+          const userObj: any = candidate.userId;
           await axios.post(
             webhookUrl,
             {
               candidateId: candidate._id.toString(),
-              candidateEmail: candidate.email,
-              candidateName: candidate.fullName,
+              candidateEmail: userObj ? userObj.email : '',
+              candidateName: candidate.name,
               jobTitle: job.title,
               companyName,
             },
@@ -287,7 +412,7 @@ router.post(
       }
 
       res.json({
-        message: 'Offer sent and application status updated to offered.',
+        message: 'Offer sent and application status updated to selected.',
         application,
       });
     } catch (error) {

@@ -391,7 +391,7 @@ export function CandidateInterview() {
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   Recording your answer...
                 </p>
-                <p className="text-xs text-slate-500 mt-1">Click the microphone button when you're done</p>
+                <p className="text-xs text-slate-500 mt-1">Click the microphone button when you&apos;re done</p>
               </div>
             </motion.div>
           )}

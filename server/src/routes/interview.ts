@@ -9,6 +9,11 @@ import {
   Company,
   User,
   InterviewEvaluation,
+  Candidate,
+  Hr,
+  QuestionBank,
+  QuestionResponse,
+  ResumeAnalysis,
 } from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
@@ -19,7 +24,6 @@ const router = Router();
 /**
  * POST /interview
  * Body: { applicationId, schedule, durationMinutes }
- * Schedules an interview for a shortlisted application, fires n8n webhook, and creates reminder.
  */
 router.post(
   '/',
@@ -35,6 +39,11 @@ router.post(
           400,
           'VALIDATION_ERROR'
         );
+      }
+
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
 
       // 1. Fetch application
@@ -58,7 +67,7 @@ router.post(
         throw new AppError('Job posting not found.', 404, 'NOT_FOUND');
       }
 
-      if (job.postedBy.toString() !== req.user!._id.toString()) {
+      if (job.hrId.toString() !== hr._id.toString()) {
         throw new AppError(
           'You do not have permission to schedule interviews for this application.',
           403,
@@ -66,17 +75,22 @@ router.post(
         );
       }
 
-      // 3. Fetch Candidate and Company details for the webhook
-      const candidate = await User.findById(application.candidateId);
+      // 3. Fetch Candidate and Company details
+      const candidate = await Candidate.findById(application.candidateId);
       if (!candidate) {
         throw new AppError('Candidate not found.', 404, 'NOT_FOUND');
+      }
+
+      const candidateUser = await User.findById(candidate.userId);
+      if (!candidateUser) {
+        throw new AppError('Candidate user credentials not found.', 404, 'NOT_FOUND');
       }
 
       let companyName = 'Our Company';
       if (job.companyId) {
         const company = await Company.findById(job.companyId);
         if (company) {
-          companyName = company.name;
+          companyName = company.companyName;
         }
       }
 
@@ -86,20 +100,13 @@ router.post(
       }
 
       // 4. Create Interview
-      const token = crypto.randomBytes(32).toString('hex');
-      // Set expiration to 7 days from now or 48 hours after schedule
-      const expiresAt = new Date(scheduleDate.getTime() + 48 * 60 * 60 * 1000);
-
       const interview = await Interview.create({
         applicationId: application._id,
-        candidateId: application.candidateId,
-        jobId: application.jobId,
-        token,
-        status: 'pending',
-        scheduledAt: scheduleDate,
-        expiresAt,
-        duration: Number(durationMinutes),
-        invitedBy: req.user!._id,
+        schedule: scheduleDate,
+        durationMinutes: Number(durationMinutes),
+        meetingLink: `https://meet.jit.si/AI-Recruitment-${application._id}`,
+        reminderSent: false,
+        result: 'pending',
       });
 
       // 5. Update Application status
@@ -111,8 +118,9 @@ router.post(
       await InterviewReminder.create({
         interviewId: interview._id,
         scheduledTime: reminderTime,
-        candidateEmailSent: false,
-        hrEmailSent: false,
+        emailSent: false,
+        whatsappSent: false,
+        smsSent: false,
       });
 
       // 7. Fire N8N_WEBHOOK_INTERVIEW_SCHEDULED
@@ -123,11 +131,11 @@ router.post(
             webhookUrl,
             {
               candidateId: candidate._id.toString(),
-              candidateEmail: candidate.email,
-              candidateName: candidate.fullName,
+              candidateEmail: candidateUser.email,
+              candidateName: candidate.name,
               applicationId: application._id.toString(),
               interviewId: interview._id.toString(),
-              interviewToken: token,
+              interviewToken: interview._id.toString(), // use interviewId as token fallback
               schedule: scheduleDate.toISOString(),
               durationMinutes: Number(durationMinutes),
               jobTitle: job.title,
@@ -158,7 +166,6 @@ router.post(
 /**
  * PATCH /interview/:id/reschedule
  * Body: { schedule, durationMinutes }
- * Reschedules an existing interview, resets reminders, and fires the reschedule webhook.
  */
 router.patch(
   '/:id/reschedule',
@@ -173,13 +180,28 @@ router.patch(
         throw new AppError('schedule date is required.', 400, 'VALIDATION_ERROR');
       }
 
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      if (!hr) {
+        throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
+      }
+
       const interview = await Interview.findById(id);
       if (!interview) {
         throw new AppError('Interview not found.', 404, 'NOT_FOUND');
       }
 
+      const application = await Application.findById(interview.applicationId);
+      if (!application) {
+        throw new AppError('Associated application not found.', 404, 'NOT_FOUND');
+      }
+
+      const job = await JobPosting.findById(application.jobId);
+      if (!job) {
+        throw new AppError('Associated job posting not found.', 404, 'NOT_FOUND');
+      }
+
       // Check HR ownership
-      if (interview.invitedBy.toString() !== req.user!._id.toString()) {
+      if (job.hrId.toString() !== hr._id.toString()) {
         throw new AppError(
           'You do not have permission to reschedule this interview.',
           403,
@@ -193,11 +215,10 @@ router.patch(
       }
 
       // Update Interview fields
-      interview.scheduledAt = scheduleDate;
+      interview.schedule = scheduleDate;
       if (durationMinutes) {
-        interview.duration = Number(durationMinutes);
+        interview.durationMinutes = Number(durationMinutes);
       }
-      interview.expiresAt = new Date(scheduleDate.getTime() + 48 * 60 * 60 * 1000);
       await interview.save();
 
       // Update or recreate Reminder (scheduledTime = schedule - 24 hours)
@@ -206,36 +227,37 @@ router.patch(
         { interviewId: interview._id },
         {
           scheduledTime: reminderTime,
-          candidateEmailSent: false,
-          hrEmailSent: false,
+          emailSent: false,
+          whatsappSent: false,
+          smsSent: false,
         },
         { upsert: true }
       );
 
       // Fetch additional fields for webhook payload
-      const candidate = await User.findById(interview.candidateId);
-      const job = await JobPosting.findById(interview.jobId);
+      const candidate = await Candidate.findById(application.candidateId);
+      const candidateUser = candidate ? await User.findById(candidate.userId) : null;
       let companyName = 'Our Company';
-      if (job?.companyId) {
+      if (job.companyId) {
         const company = await Company.findById(job.companyId);
-        if (company) companyName = company.name;
+        if (company) companyName = company.companyName;
       }
 
       // Fire reschedule webhook
       const webhookUrl = process.env.N8N_WEBHOOK_INTERVIEW_SCHEDULED;
-      if (webhookUrl && candidate && job) {
+      if (webhookUrl && candidate && candidateUser) {
         try {
           await axios.post(
             webhookUrl,
             {
               candidateId: candidate._id.toString(),
-              candidateEmail: candidate.email,
-              candidateName: candidate.fullName,
+              candidateEmail: candidateUser.email,
+              candidateName: candidate.name,
               applicationId: interview.applicationId.toString(),
               interviewId: interview._id.toString(),
-              interviewToken: interview.token,
+              interviewToken: interview._id.toString(),
               schedule: scheduleDate.toISOString(),
-              durationMinutes: interview.duration,
+              durationMinutes: interview.durationMinutes,
               jobTitle: job.title,
               companyName,
               hrEmail: req.user!.email,
@@ -263,7 +285,6 @@ router.patch(
 
 /**
  * GET /interview/reminders/due
- * Returns interview_reminders where scheduledTime <= now AND (candidateEmailSent === false OR hrEmailSent === false)
  */
 router.get(
   '/reminders/due',
@@ -272,30 +293,36 @@ router.get(
       const now = new Date();
       const reminders = await InterviewReminder.find({
         scheduledTime: { $lte: now },
-        $or: [{ candidateEmailSent: false }, { hrEmailSent: false }],
+        emailSent: false,
       });
 
       const detailedReminders = [];
       for (const reminder of reminders) {
         const interview = await Interview.findById(reminder.interviewId);
         if (!interview) continue;
-        const candidate = await User.findById(interview.candidateId);
-        const hr = await User.findById(interview.invitedBy);
-        const job = await JobPosting.findById(interview.jobId);
-        if (!candidate || !job) continue;
+        const application = await Application.findById(interview.applicationId);
+        if (!application) continue;
+        const candidate = await Candidate.findById(application.candidateId);
+        const candidateUser = candidate ? await User.findById(candidate.userId) : null;
+        const job = await JobPosting.findById(application.jobId);
+        if (!candidate || !candidateUser || !job) continue;
+
+        const hr = await Hr.findById(job.hrId);
+        const hrUser = hr ? await User.findById(hr.userId) : null;
+
         let companyName = 'Our Company';
         if (job.companyId) {
           const company = await Company.findById(job.companyId);
-          if (company) companyName = company.name;
+          if (company) companyName = company.companyName;
         }
         detailedReminders.push({
           _id: reminder._id.toString(),
           interviewId: interview._id.toString(),
-          candidateEmail: candidate.email,
-          candidateName: candidate.fullName,
-          hrEmail: hr?.email || '',
-          schedule: interview.scheduledAt ? interview.scheduledAt.toISOString() : '',
-          durationMinutes: interview.duration || 45,
+          candidateEmail: candidateUser.email,
+          candidateName: candidate.name,
+          hrEmail: hrUser?.email || '',
+          schedule: interview.schedule ? interview.schedule.toISOString() : '',
+          durationMinutes: interview.durationMinutes || 45,
           jobTitle: job.title,
           companyName,
         });
@@ -309,7 +336,6 @@ router.get(
 
 /**
  * PATCH /interview/reminders/:id
- * Marks a reminder's emails as sent.
  */
 router.patch(
   '/reminders/:id',
@@ -318,7 +344,7 @@ router.patch(
       const { id } = req.params;
       const reminder = await InterviewReminder.findByIdAndUpdate(
         id,
-        { candidateEmailSent: true, hrEmailSent: true },
+        { emailSent: true, whatsappSent: true, smsSent: true },
         { new: true }
       );
       if (!reminder) {
@@ -333,22 +359,14 @@ router.patch(
 
 /**
  * PATCH /interview/:id/calendar-synced
- * Sets calendarSynced = true on the Interview document.
  */
 router.patch(
   '/:id/calendar-synced',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const interview = await Interview.findByIdAndUpdate(
-        id,
-        { calendarSynced: true },
-        { new: true }
-      );
-      if (!interview) {
-        throw new AppError('Interview not found.', 404, 'NOT_FOUND');
-      }
-      res.json({ message: 'Interview calendar sync status updated.', interview });
+      // calendarSynced is deprecated, we just return success
+      res.json({ message: 'Interview calendar sync status updated.' });
     } catch (error) {
       next(error);
     }
@@ -357,7 +375,6 @@ router.patch(
 
 /**
  * GET /interview/:id
- * Fetches details of a specific interview (accessible by candidate or HR).
  */
 router.get(
   '/:id',
@@ -365,23 +382,75 @@ router.get(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const interview = await Interview.findById(id)
-        .populate('candidateId', 'fullName email phone')
-        .populate('jobId', 'title department location');
+      const interview = await Interview.findById(id);
 
       if (!interview) {
         throw new AppError('Interview not found.', 404, 'NOT_FOUND');
       }
 
-      // Access checks: must be candidate, or the HR who invited them
-      const isCandidate = interview.candidateId._id.toString() === req.user!._id.toString();
-      const isInvitingHr = interview.invitedBy.toString() === req.user!._id.toString();
+      const application = await Application.findById(interview.applicationId);
+      if (!application) {
+        throw new AppError('Associated application not found.', 404, 'NOT_FOUND');
+      }
 
-      if (!isCandidate && !isInvitingHr && req.user!.role !== 'admin') {
+      const candidate = await Candidate.findById(application.candidateId);
+      const job = await JobPosting.findById(application.jobId).populate('companyId');
+
+      if (!candidate || !job) {
+        throw new AppError('Candidate or job information missing.', 404, 'NOT_FOUND');
+      }
+
+      // Check access permission
+      const isCandidate = candidate.userId.toString() === req.user!._id.toString();
+      const hr = await Hr.findOne({ userId: req.user!._id });
+      const isInvitingHr = hr && job.hrId.toString() === hr._id.toString();
+
+      if (!isCandidate && !isInvitingHr) {
         throw new AppError('You do not have permission to view this interview.', 403, 'FORBIDDEN');
       }
 
-      res.json(interview);
+      const responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId');
+      const questionsList = responses.map((resp) => {
+        const qBank: any = resp.questionId;
+        return {
+          questionId: resp._id.toString(),
+          text: qBank ? qBank.question : '',
+          candidateAnswer: resp.answer || '',
+          aiScore: resp.aiScore || 0,
+          aiFeedback: resp.feedback || '',
+        };
+      });
+
+      const resObj = {
+        _id: interview._id,
+        applicationId: interview.applicationId,
+        schedule: interview.schedule,
+        scheduledAt: interview.schedule,
+        durationMinutes: interview.durationMinutes,
+        duration: interview.durationMinutes,
+        meetingLink: interview.meetingLink,
+        reminderSent: interview.reminderSent,
+        overallScore: interview.overallScore,
+        result: interview.result,
+        status: interview.result === 'pending' ? 'pending' : interview.result,
+        questions: questionsList,
+        candidateId: {
+          _id: candidate._id,
+          fullName: candidate.name,
+          name: candidate.name,
+          phone: candidate.phone,
+        },
+        jobId: {
+          _id: job._id,
+          title: job.title,
+          domain: job.domain,
+          department: job.domain,
+          location: 'Remote',
+          companyId: job.companyId,
+        },
+      };
+
+      res.json(resObj);
     } catch (error) {
       next(error);
     }
@@ -390,8 +459,6 @@ router.get(
 
 /**
  * GET /interview
- * Query: ?applicationId=
- * Lists interviews (filtered by applicationId). Access restricted to candidate/HR.
  */
 router.get(
   '/',
@@ -405,19 +472,66 @@ router.get(
         filter.applicationId = applicationId;
       }
 
-      const interviews = await Interview.find(filter)
-        .populate('candidateId', 'fullName email phone')
-        .populate('jobId', 'title department location')
-        .sort({ scheduledAt: -1 });
+      const interviews = await Interview.find(filter).sort({ createdAt: -1 });
+      const detailedInterviews = [];
 
-      // Access checks
-      const filtered = interviews.filter((interview) => {
-        const isCandidate = interview.candidateId._id.toString() === req.user!._id.toString();
-        const isInvitingHr = interview.invitedBy.toString() === req.user!._id.toString();
-        return isCandidate || isInvitingHr || req.user!.role === 'admin';
-      });
+      for (const interview of interviews) {
+        const application = await Application.findById(interview.applicationId);
+        if (!application) continue;
 
-      res.json(filtered);
+        const candidate = await Candidate.findById(application.candidateId);
+        const job = await JobPosting.findById(application.jobId).populate('companyId');
+        if (!candidate || !job) continue;
+
+        const isCandidate = candidate.userId.toString() === req.user!._id.toString();
+        const hr = await Hr.findOne({ userId: req.user!._id });
+        const isInvitingHr = hr && job.hrId.toString() === hr._id.toString();
+
+        if (isCandidate || isInvitingHr) {
+          const responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId');
+          const questionsList = responses.map((resp) => {
+            const qBank: any = resp.questionId;
+            return {
+              questionId: resp._id.toString(),
+              text: qBank ? qBank.question : '',
+              candidateAnswer: resp.answer || '',
+              aiScore: resp.aiScore || 0,
+              aiFeedback: resp.feedback || '',
+            };
+          });
+
+          detailedInterviews.push({
+            _id: interview._id,
+            applicationId: interview.applicationId,
+            schedule: interview.schedule,
+            scheduledAt: interview.schedule,
+            durationMinutes: interview.durationMinutes,
+            duration: interview.durationMinutes,
+            meetingLink: interview.meetingLink,
+            reminderSent: interview.reminderSent,
+            overallScore: interview.overallScore,
+            result: interview.result,
+            status: interview.result === 'pending' ? 'pending' : interview.result,
+            questions: questionsList,
+            candidateId: {
+              _id: candidate._id,
+              fullName: candidate.name,
+              name: candidate.name,
+              phone: candidate.phone,
+            },
+            jobId: {
+              _id: job._id,
+              title: job.title,
+              domain: job.domain,
+              department: job.domain,
+              location: 'Remote',
+              companyId: job.companyId,
+            },
+          });
+        }
+      }
+
+      res.json(detailedInterviews);
     } catch (error) {
       next(error);
     }
@@ -434,8 +548,7 @@ async function generateQuestions(job: any): Promise<any[]> {
 
   const prompt = `You are an expert HR interviewer. Generate exactly 10 interview questions for the job role: "${job.title}".
 Job Description: "${job.description}"
-Required Skills: ${(job.skills || []).join(', ')}
-Requirements: ${(job.requirements || []).join(', ')}
+Required Skills: ${(job.skillsRequired || []).join(', ')}
 
 Provide questions across these categories:
 - technical: questions related to technical skills, coding, architecture, etc.
@@ -546,7 +659,6 @@ function generateFallbackQuestions(job: any): any[] {
 
 /**
  * POST /interview/:id/start-avatar
- * Starts the avatar session, generates/fetches 10 questions, and triggers the first question.
  */
 router.post(
   '/:id/start-avatar',
@@ -560,30 +672,43 @@ router.post(
         throw new AppError('Interview not found.', 404, 'NOT_FOUND');
       }
 
-      if (interview.candidateId.toString() !== req.user!._id.toString()) {
+      const application = await Application.findById(interview.applicationId);
+      if (!application) {
+        throw new AppError('Associated application not found.', 404, 'NOT_FOUND');
+      }
+
+      const candidate = await Candidate.findById(application.candidateId);
+      if (!candidate || candidate.userId.toString() !== req.user!._id.toString()) {
         throw new AppError('You do not have access to this interview.', 403, 'FORBIDDEN');
       }
 
-      if (interview.status !== 'pending' && interview.status !== 'in_progress') {
-        throw new AppError('Interview is not in a valid state to start.', 400, 'INVALID_STATUS');
-      }
-
-      if (interview.status === 'pending') {
-        interview.status = 'in_progress';
-        interview.startedAt = new Date();
-      }
-
       // Generate questions if not already present
-      if (!interview.questions || interview.questions.length === 0) {
-        const job = await JobPosting.findById(interview.jobId);
+      let responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId').sort({ questionOrder: 1 });
+      if (responses.length === 0) {
+        const job = await JobPosting.findById(application.jobId);
         if (!job) {
           throw new AppError('Associated job posting not found.', 404, 'NOT_FOUND');
         }
         const generated = await generateQuestions(job);
-        interview.questions = generated;
+        responses = [];
+        for (let idx = 0; idx < generated.length; idx++) {
+          const q = generated[idx];
+          const qBank = await QuestionBank.create({
+            domain: job.domain,
+            difficulty: 'medium',
+            question: q.text,
+            expectedAnswer: `Expected concepts: ${q.category}`,
+            keywords: [q.category],
+          });
+          const qResp = await QuestionResponse.create({
+            interviewId: interview._id,
+            questionId: qBank._id,
+            questionOrder: idx + 1,
+          });
+          (qResp as any).questionId = qBank; // simulate populate
+          responses.push(qResp);
+        }
       }
-
-      await interview.save();
 
       // Call avatar-service to start session
       const avatarServiceUrl = process.env.AVATAR_SERVICE_URL || 'http://localhost:5002';
@@ -595,7 +720,8 @@ router.post(
         sessionId = sessionRes.data.sessionId;
 
         // Trigger avatar to speak the first question
-        const firstQuestion = interview.questions[0].text;
+        const firstQuestionBank: any = responses[0].questionId;
+        const firstQuestion = firstQuestionBank ? firstQuestionBank.question : 'Hello';
         await axios.post(`${avatarServiceUrl}/avatar/ask`, {
           sessionId,
           questionText: firstQuestion,
@@ -605,11 +731,22 @@ router.post(
         throw new AppError('Failed to initialize avatar session.', 502, 'AVATAR_SERVICE_ERROR');
       }
 
+      const questionsList = responses.map((resp) => {
+        const qBank: any = resp.questionId;
+        return {
+          questionId: resp._id.toString(),
+          text: qBank ? qBank.question : '',
+          candidateAnswer: resp.answer || '',
+          aiScore: resp.aiScore || 0,
+          aiFeedback: resp.feedback || '',
+        };
+      });
+
       res.json({
         message: 'Avatar interview session started successfully.',
         sessionId,
-        questions: interview.questions,
-        firstQuestion: interview.questions[0].text,
+        questions: questionsList,
+        firstQuestion: questionsList[0].text,
       });
     } catch (error) {
       next(error);
@@ -619,8 +756,6 @@ router.post(
 
 /**
  * POST /interview/:id/answer
- * Triggers avatar-service transcription, evaluates the answer via python-ai, saves scores,
- * and handles flow transition (next question or completion).
  */
 router.post(
   '/:id/answer',
@@ -640,23 +775,22 @@ router.post(
         throw new AppError('Interview not found.', 404, 'NOT_FOUND');
       }
 
-      if (interview.candidateId.toString() !== req.user!._id.toString()) {
+      const application = await Application.findById(interview.applicationId);
+      if (!application) {
+        throw new AppError('Associated application not found.', 404, 'NOT_FOUND');
+      }
+
+      const candidate = await Candidate.findById(application.candidateId);
+      if (!candidate || candidate.userId.toString() !== req.user!._id.toString()) {
         throw new AppError('You do not have access to this interview.', 403, 'FORBIDDEN');
       }
 
-      if (interview.status !== 'in_progress') {
-        throw new AppError('Interview is not currently in progress.', 400, 'INVALID_STATUS');
-      }
-
-      // Find the current question index
-      const questionIndex = interview.questions.findIndex((q) => q.questionId === questionId);
-      if (questionIndex === -1) {
+      const currentQuestion = await QuestionResponse.findById(questionId).populate('questionId');
+      if (!currentQuestion) {
         throw new AppError('Question not found in this interview.', 400, 'NOT_FOUND');
       }
 
-      const currentQuestion = interview.questions[questionIndex];
-
-      // 1. Call avatar-service listen endpoint (blocks until user uploads audio)
+      // 1. Call avatar-service listen endpoint
       const avatarServiceUrl = process.env.AVATAR_SERVICE_URL || 'http://localhost:5002';
       let transcript = '';
       try {
@@ -668,24 +802,26 @@ router.post(
       }
 
       // Save transcript
-      currentQuestion.candidateAnswer = transcript;
+      currentQuestion.answer = transcript;
 
       // 2. Fetch Job Details for context-aware scoring
-      const job = await JobPosting.findById(interview.jobId);
+      const job = await JobPosting.findById(application.jobId);
       if (!job) {
         throw new AppError('Associated job posting not found.', 404, 'NOT_FOUND');
       }
 
-      const expectedAnswerGuideline = `The candidate should provide a professional response demonstrating knowledge or experience related to the question: '${currentQuestion.text}'. Key aspects: relevant to a ${job.title} role, addressing required skills: ${(job.skills || []).join(', ')}.`;
+      const qBank: any = currentQuestion.questionId;
+      const questionText = qBank ? qBank.question : 'Interview Question';
+      const expectedAnswerGuideline = `The candidate should provide a professional response demonstrating knowledge or experience related to the question: '${questionText}'. Key aspects: relevant to a ${job.title} role, addressing required skills: ${(job.skillsRequired || []).join(', ')}.`;
 
       // 3. Call python-ai evaluate-answer endpoint
-      const pythonAiUrl = process.env.PYTHON_AI_URL || 'http://localhost:5001';
+      const pythonAiUrl = process.env.PYTHON_AI_URL || 'http://localhost:8002';
       let aiScore = 5;
       let aiFeedback = 'Response recorded successfully.';
 
       try {
         const evalRes = await axios.post(`${pythonAiUrl}/evaluate-answer`, {
-          question: currentQuestion.text,
+          question: questionText,
           expectedAnswer: expectedAnswerGuideline,
           candidateAnswer: transcript,
         });
@@ -697,21 +833,25 @@ router.post(
       }
 
       currentQuestion.aiScore = aiScore;
-      currentQuestion.aiFeedback = aiFeedback;
+      currentQuestion.feedback = aiFeedback;
+      currentQuestion.confidence = 80; // default confidence
 
-      await interview.save();
+      await currentQuestion.save();
 
       // Check if there is a next question
-      const nextIndex = questionIndex + 1;
-      const isDone = nextIndex >= interview.questions.length;
+      const nextIndex = currentQuestion.questionOrder + 1;
+      const nextQuestion = await QuestionResponse.findOne({
+        interviewId: interview._id,
+        questionOrder: nextIndex,
+      }).populate('questionId');
 
-      if (!isDone) {
-        // Trigger avatar-service to speak the next question
-        const nextQuestion = interview.questions[nextIndex];
+      if (nextQuestion) {
+        const nextQBank: any = nextQuestion.questionId;
+        const nextQuestionText = nextQBank ? nextQBank.question : 'Next Question';
         try {
           await axios.post(`${avatarServiceUrl}/avatar/ask`, {
             sessionId,
-            questionText: nextQuestion.text,
+            questionText: nextQuestionText,
           });
         } catch (err: any) {
           logger.warn(`[Interview] Failed to push next question to avatar-service: ${err.message}`);
@@ -719,45 +859,38 @@ router.post(
 
         res.json({
           transcript,
-          nextQuestion: nextQuestion.text,
-          nextQuestionId: nextQuestion.questionId,
-          currentQuestionIndex: nextIndex,
+          nextQuestion: nextQuestionText,
+          nextQuestionId: nextQuestion._id.toString(),
+          currentQuestionIndex: nextIndex - 1,
           done: false,
         });
       } else {
-        // Complete the interview!
-        interview.status = 'completed';
-        interview.completedAt = new Date();
-        await interview.save();
-
         // End the avatar session
         try {
           await axios.post(`${avatarServiceUrl}/avatar/session/end`, { sessionId });
-        } catch {}
-
-        // Compute avgInterviewScore (0-10 scale)
-        const totalScore = interview.questions.reduce((sum, q) => sum + (q.aiScore || 0), 0);
-        const avgInterviewScore = totalScore / interview.questions.length;
-        const overallInterviewScore = avgInterviewScore * 10; // Normalize to 0-100
-
-        // Fetch application to get atsScore
-        const application = await Application.findById(interview.applicationId);
-        if (!application) {
-          throw new AppError('Associated application not found.', 404, 'NOT_FOUND');
+        } catch (err: any) {
+          logger.debug(`[Interview] Could not end avatar session: ${err.message}`);
         }
 
-        const atsScore = application.atsScore || 70;
+        // Compute avgInterviewScore (0-10 scale)
+        const allResponses = await QuestionResponse.find({ interviewId: interview._id });
+        const totalScore = allResponses.reduce((sum, q) => sum + (q.aiScore || 0), 0);
+        const avgInterviewScore = totalScore / Math.max(1, allResponses.length);
+        const overallInterviewScore = Math.round(avgInterviewScore * 10); // Normalize to 0-100
+
+        // Fetch resume analysis to get atsScore
+        const resumeAnalysis = await ResumeAnalysis.findOne({ applicationId: application._id });
+        const atsScore = resumeAnalysis ? resumeAnalysis.atsScore : 70;
         const finalWeightedScore = Math.round(atsScore * 0.3 + overallInterviewScore * 0.7);
 
         // Perform holistic evaluation using Gemini API key
         let technicalScore = overallInterviewScore;
         let communicationScore = overallInterviewScore;
         let problemSolvingScore = overallInterviewScore;
-        let cultureFitScore = overallInterviewScore;
+        let grammarScore = overallInterviewScore;
+        let behavioralScore = overallInterviewScore;
         let confidenceScore = overallInterviewScore;
-        let strengths: string[] = ['Clear communication', 'Good understanding of core concepts'];
-        let weaknesses: string[] = ['Could provide more specific examples'];
-        let summary = 'The candidate completed the automated avatar interview and responded to all questions.';
+        let feedback = 'The candidate completed the automated avatar interview and responded to all questions.';
         let recommendation: 'strong_hire' | 'hire' | 'maybe' | 'no_hire' | 'strong_no_hire' = 'maybe';
 
         const apiKey = process.env.GEMINI_API_KEY;
@@ -767,18 +900,20 @@ Job Title: "${job.title}"
 Job Description: "${job.description}"
 
 Here is the transcript of the interview with questions and candidate answers:
-${interview.questions.map((q, idx) => `Q${idx + 1}: ${q.text}\nCandidate Answer: ${q.candidateAnswer}\nAI Feedback: ${q.aiFeedback}`).join('\n\n')}
+${allResponses.map((q, idx) => {
+  const qb: any = q.questionId;
+  return `Q${idx + 1}: ${qb ? qb.question : ''}\nCandidate Answer: ${q.answer || ''}\nAI Feedback: ${q.feedback || ''}`;
+}).join('\n\n')}
 
 Provide a comprehensive evaluation. Return ONLY a valid JSON object matching this schema (do NOT include markdown formatting or code blocks):
 {
   "technicalScore": number 0-100,
   "communicationScore": number 0-100,
   "problemSolvingScore": number 0-100,
-  "cultureFitScore": number 0-100,
+  "grammarScore": number 0-100,
+  "behavioralScore": number 0-100,
   "confidenceScore": number 0-100,
-  "strengths": string[],
-  "weaknesses": string[],
-  "summary": string,
+  "feedback": string,
   "recommendation": "strong_hire" | "hire" | "maybe" | "no_hire" | "strong_no_hire"
 }`;
 
@@ -795,11 +930,10 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
             technicalScore = typeof parsedEval.technicalScore === 'number' ? parsedEval.technicalScore : technicalScore;
             communicationScore = typeof parsedEval.communicationScore === 'number' ? parsedEval.communicationScore : communicationScore;
             problemSolvingScore = typeof parsedEval.problemSolvingScore === 'number' ? parsedEval.problemSolvingScore : problemSolvingScore;
-            cultureFitScore = typeof parsedEval.cultureFitScore === 'number' ? parsedEval.cultureFitScore : cultureFitScore;
+            grammarScore = typeof parsedEval.grammarScore === 'number' ? parsedEval.grammarScore : grammarScore;
+            behavioralScore = typeof parsedEval.behavioralScore === 'number' ? parsedEval.behavioralScore : behavioralScore;
             confidenceScore = typeof parsedEval.confidenceScore === 'number' ? parsedEval.confidenceScore : confidenceScore;
-            strengths = Array.isArray(parsedEval.strengths) ? parsedEval.strengths : strengths;
-            weaknesses = Array.isArray(parsedEval.weaknesses) ? parsedEval.weaknesses : weaknesses;
-            summary = parsedEval.summary || summary;
+            feedback = parsedEval.feedback || feedback;
             if (['strong_hire', 'hire', 'maybe', 'no_hire', 'strong_no_hire'].includes(parsedEval.recommendation)) {
               recommendation = parsedEval.recommendation;
             }
@@ -811,44 +945,36 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
         // Create InterviewEvaluation document
         await InterviewEvaluation.create({
           interviewId: interview._id,
-          applicationId: application._id,
-          candidateId: interview.candidateId,
           technicalScore,
           communicationScore,
-          problemSolvingScore,
-          cultureFitScore,
           confidenceScore,
-          overallInterviewScore,
-          atsScore,
-          finalWeightedScore,
-          strengths,
-          weaknesses,
-          summary,
+          grammarScore,
+          problemSolvingScore,
+          behavioralScore,
+          overallScore: overallInterviewScore,
           recommendation,
-          hrDecision: 'pending',
+          feedback,
         });
 
-        // Update application
-        application.finalScore = finalWeightedScore;
-        application.status = 'interviewed';
-        await application.save();
-
-        // Update interview status to evaluated
-        interview.status = 'evaluated';
+        // Update interview status to evaluated/completed via results
+        interview.overallScore = overallInterviewScore;
+        interview.result = recommendation.includes('no_hire') ? 'rejected' : 'selected';
         await interview.save();
 
         // Fire N8N_WEBHOOK_INTERVIEW_COMPLETE
         const completeWebhookUrl = process.env.N8N_WEBHOOK_INTERVIEW_COMPLETE;
         if (completeWebhookUrl) {
           try {
-            const candidate = await User.findById(interview.candidateId);
-            const hr = await User.findById(interview.invitedBy);
+            const hr = await Hr.findById(job.hrId);
+            const hrUser = hr ? await User.findById(hr.userId) : null;
+            const candidateUser = await User.findById(candidate.userId);
+
             await axios.post(
               completeWebhookUrl,
               {
-                candidateId: interview.candidateId.toString(),
-                candidateName: candidate?.fullName || 'Candidate',
-                candidateEmail: candidate?.email || '',
+                candidateId: candidate._id.toString(),
+                candidateName: candidate.name,
+                candidateEmail: candidateUser?.email || '',
                 applicationId: application._id.toString(),
                 interviewId: interview._id.toString(),
                 overallInterviewScore,
@@ -856,7 +982,7 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
                 finalWeightedScore,
                 recommendation,
                 jobTitle: job.title,
-                hrEmail: hr?.email || '',
+                hrEmail: hrUser?.email || '',
               },
               { timeout: 5000 }
             );
