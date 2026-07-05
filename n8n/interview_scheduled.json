@@ -1,0 +1,112 @@
+{
+  "name": "Interview Scheduled Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "interview-scheduled",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.candidateEmail }}",
+        "subject": "=Interview Invitation: {{ $json.body.jobTitle }} at {{ $json.body.companyName }}",
+        "emailType": "text",
+        "message": "=Hello {{ $json.body.candidateName }},\n\nWe are pleased to invite you to an interview for the {{ $json.body.jobTitle }} position at {{ $json.body.companyName }}.\n\nDetails:\n- Scheduled Time: {{ $json.body.schedule }}\n- Duration: {{ $json.body.durationMinutes }} minutes\n- Format: AI Avatar Interview\n\nYou can start the interview by logging into your candidate dashboard on our site.\n\nBest regards,\nThe Recruitment Team",
+        "options": {}
+      },
+      "id": "gmail-send",
+      "name": "Send Invite Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [300, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-creds",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendarId": "primary",
+        "title": "=AI Interview: {{ $json.body.candidateName }} - {{ $json.body.jobTitle }}",
+        "start": "={{ $json.body.schedule }}",
+        "end": "={{ new Date(new Date($json.body.schedule).getTime() + $json.body.durationMinutes * 60000).toISOString() }}",
+        "additionalFields": {
+          "description": "=AI Avatar Interview Session via AuraRecruit.\nCandidate: {{ $json.body.candidateName }} ({{ $json.body.candidateEmail }})\nJob: {{ $json.body.jobTitle }}"
+        }
+      },
+      "id": "calendar-create",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [500, 200],
+      "credentials": {
+        "googleCalendarOAuth2": {
+          "id": "calendar-creds",
+          "name": "Google Calendar Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://localhost:5000/api/interview/{{ $json.body.interviewId }}/calendar-synced",
+        "options": {}
+      },
+      "id": "http-sync",
+      "name": "Mark Calendar Synced",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [700, 200]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Invite Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Invite Email": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Mark Calendar Synced",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateId": "interview-scheduled-workflow"
+  },
+  "pinData": {}
+}

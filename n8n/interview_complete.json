@@ -1,0 +1,100 @@
+{
+  "name": "Interview Complete HR Reporting Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "interview-complete",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "operation": "appendRow",
+        "spreadsheetId": "your-spreadsheet-id-placeholder",
+        "sheetName": "Sheet1",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Candidate ID": "={{ $json.body.candidateId }}",
+            "Candidate Name": "={{ $json.body.candidateName }}",
+            "Candidate Email": "={{ $json.body.candidateEmail }}",
+            "Job Title": "={{ $json.body.jobTitle }}",
+            "ATS Score": "={{ $json.body.atsScore }}",
+            "Interview Score": "={{ $json.body.overallInterviewScore }}",
+            "Final Weighted Score": "={{ $json.body.finalWeightedScore }}",
+            "Recommendation": "={{ $json.body.recommendation }}",
+            "Date Completed": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-append",
+      "name": "Google Sheets Mirror",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [300, 200],
+      "credentials": {
+        "googleSheetsOAuth2": {
+          "id": "sheets-creds",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.hrEmail }}",
+        "subject": "=Interview Evaluated: {{ $json.body.candidateName }} - {{ $json.body.jobTitle }}",
+        "emailType": "text",
+        "message": "=Hello,\n\nThe AI avatar interview for {{ $json.body.candidateName }} applying for {{ $json.body.jobTitle }} has been completed and evaluated.\n\nSummary Results:\n- ATS Match Score: {{ $json.body.atsScore }}/100\n- Avatar Interview Score: {{ $json.body.overallInterviewScore }}/100\n- Final Weighted Score: {{ $json.body.finalWeightedScore }}/100\n- Recommendation: {{ $json.body.recommendation.replace('_', ' ').toUpperCase() }}\n\nYou can review the complete feedback and response breakdown on the HR Dashboard.\n\nBest regards,\nAuraRecruit AI Engine",
+        "options": {}
+      },
+      "id": "gmail-hr-notify",
+      "name": "Notify HR via Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [500, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-creds",
+          "name": "Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets Mirror",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets Mirror": {
+      "main": [
+        [
+          {
+            "node": "Notify HR via Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateId": "interview-complete-workflow"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,56 @@
+{
+  "name": "Registration Welcome Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "registration",
+        "options": {}
+      },
+      "id": "webhook-node-id",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.email }}",
+        "subject": "Welcome to AuraRecruit!",
+        "emailType": "text",
+        "message": "=Hello {{ $json.body.name }},\n\nWelcome to AuraRecruit! Your account has been registered successfully as a {{ $json.body.role }}.\n\nPlease verify your email address to complete your registration:\n{{ $json.body.verificationLink }}\n\nBest regards,\nThe AuraRecruit Team",
+        "options": {}
+      },
+      "id": "gmail-node-id",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [350, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-creds",
+          "name": "Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateId": "registration-welcome-workflow"
+  },
+  "pinData": {}
+}

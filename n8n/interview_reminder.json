@@ -1,0 +1,107 @@
+{
+  "name": "Interview Reminder Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:5000/api/interview/reminders/due",
+        "options": {}
+      },
+      "id": "fetch-due",
+      "name": "Fetch Due Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.candidateEmail }}",
+        "subject": "=Interview Reminder: {{ $json.jobTitle }} at {{ $json.companyName }} tomorrow",
+        "emailType": "text",
+        "message": "=Hello {{ $json.candidateName }},\n\nThis is a friendly reminder that you have an upcoming AI Avatar Interview scheduled for the {{ $json.jobTitle }} position at {{ $json.companyName }}.\n\nTime: {{ $json.schedule }}\nDuration: {{ $json.durationMinutes }} minutes\n\nPlease ensure you are in a quiet room with a working microphone before starting.\n\nBest regards,\nThe AuraRecruit Team",
+        "options": {}
+      },
+      "id": "gmail-reminder",
+      "name": "Send Reminder Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [500, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-creds",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://localhost:5000/api/interview/reminders/{{ $json._id }}",
+        "options": {}
+      },
+      "id": "mark-sent",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [700, 200]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Due Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Due Reminders": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateId": "interview-reminder-workflow"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,92 @@
+# Render Blueprint — AI Interview Platform
+# Defines three Render Web Services (no Docker)
+
+services:
+  # ── Node.js API Server ──
+  - type: web
+    name: ai-interview-server
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: PYTHON_AI_URL
+        sync: false
+      - key: AVATAR_SERVICE_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: N8N_WEBHOOK_REGISTRATION
+        sync: false
+      - key: N8N_WEBHOOK_INTERVIEW_SCHEDULED
+        sync: false
+      - key: N8N_WEBHOOK_INTERVIEW_REMINDER
+        sync: false
+      - key: N8N_WEBHOOK_INTERVIEW_COMPLETE
+        sync: false
+      - key: N8N_WEBHOOK_OFFER
+        sync: false
+      - key: N8N_WEBHOOK_RESUME_REJECTED
+        sync: false
+    healthCheckPath: /health
+
+  # ── Python AI Service (FastAPI) ──
+  - type: web
+    name: ai-interview-python-ai
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: python-ai
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SERVER_URL
+        sync: false
+    healthCheckPath: /healthz
+
+  # ── Avatar Service (Node.js/Express wrapper) ──
+  - type: web
+    name: ai-interview-avatar-service
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: avatar-service
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5002"
+      - key: SERVER_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ELEVEN_LABS_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+    healthCheckPath: /health
+

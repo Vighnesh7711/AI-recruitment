@@ -1,0 +1,14 @@
+# ── Core ──
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.9.0
+
+# ── PDF Processing ──
+PyMuPDF>=1.24.0
+
+# ── Environment ──
+python-dotenv>=1.0.0
+
+# ── Google Gemini SDK ──
+# Verified: google-genai is the current official SDK (google-generativeai is deprecated as of Nov 2025)
+google-genai>=1.0.0

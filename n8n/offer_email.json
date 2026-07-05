@@ -1,0 +1,56 @@
+{
+  "name": "Send Offer Email Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "offer",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.candidateEmail }}",
+        "subject": "=Official Job Offer: {{ $json.body.jobTitle }} at {{ $json.body.companyName }}",
+        "emailType": "text",
+        "message": "=Dear {{ $json.body.candidateName }},\n\nCongratulations! On behalf of {{ $json.body.companyName }}, we are thrilled to offer you the position of {{ $json.body.jobTitle }}.\n\nWe were incredibly impressed by your interviews and background, and we believe you will be a fantastic addition to our team.\n\nOur HR team will follow up shortly with details regarding compensation, benefits, and start date documentation.\n\nWelcome aboard!\n\nBest regards,\nThe {{ $json.body.companyName }} Recruitment Team",
+        "options": {}
+      },
+      "id": "gmail-send",
+      "name": "Send Offer Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [350, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-creds",
+          "name": "Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateId": "offer-email-workflow"
+  },
+  "pinData": {}
+}

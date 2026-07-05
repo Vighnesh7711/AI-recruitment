@@ -1,0 +1,56 @@
+{
+  "name": "Resume Rejected Improvement Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resume-rejected",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.candidateEmail }}",
+        "subject": "Application Status & Feedback - AuraRecruit",
+        "emailType": "text",
+        "message": "=Hello {{ $json.body.candidateName }},\n\nThank you for applying to our open position via AuraRecruit.\n\nAfter reviewing your resume, we regret to inform you that we will not be moving forward with your application at this time (ATS score: {{ $json.body.atsScore }}/100).\n\nTo help you with your future applications, our AI analyzer has identified the following areas for improvement:\n\nWeaknesses:\n{{ $json.body.weaknesses.join('\\n- ') }}\n\nRecommendations:\n{{ $json.body.recommendations.join('\\n- ') }}\n\nWe wish you all the best in your job search.\n\nBest regards,\nThe AuraRecruit HR Team",
+        "options": {}
+      },
+      "id": "gmail-send",
+      "name": "Send Rejection & Feedback Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [350, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-creds",
+          "name": "Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Rejection & Feedback Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateId": "resume-rejected-workflow"
+  },
+  "pinData": {}
+}
