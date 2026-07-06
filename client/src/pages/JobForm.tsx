@@ -43,14 +43,14 @@ export function JobForm() {
         const res = await api.get(`/jobs/${id}`);
         const job = res.data;
         setTitle(job.title || '');
-        setDomain(job.department || '');
-        setExperience(job.experienceLevel || 'mid');
-        setSkillsRequired(Array.isArray(job.skills) ? job.skills.join(', ') : '');
+        setDomain(job.domain || '');
+        setExperience(job.experience || 'mid');
+        setSkillsRequired(Array.isArray(job.skillsRequired) ? job.skillsRequired.join(', ') : '');
         setDescription(job.description || '');
-        setSalary(job.salaryMax ? String(job.salaryMax) : '');
-        if (job.applicationDeadline) {
+        setSalary(job.salary ? String(job.salary) : '');
+        if (job.deadline) {
           // Format deadline to YYYY-MM-DD
-          const d = new Date(job.applicationDeadline);
+          const d = new Date(job.deadline);
           setDeadline(d.toISOString().split('T')[0]);
         }
         setLocation(job.location || 'Remote');
