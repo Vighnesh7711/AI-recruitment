@@ -84,27 +84,32 @@ export function startScheduler() {
           const webhookUrl = process.env.N8N_WEBHOOK_INTERVIEW_REMINDER;
           if (webhookUrl) {
             // Trigger webhook
-            await axios.post(
-              webhookUrl,
-              {
-                reminderId: reminder._id.toString(),
-                interviewId: interview._id.toString(),
-                candidateId: candidate._id.toString(),
-                candidateEmail: candidateUser.email,
-                candidateName: candidate.name,
-                hrEmail: hrUser.email,
-                hrName: hr.name,
-                schedule: interview.schedule.toISOString(),
-                durationMinutes: interview.durationMinutes,
-                jobTitle: job.title,
-                companyName,
-                candidateEmailSent: reminder.emailSent,
-                hrEmailSent: reminder.emailSent,
-              },
-              { timeout: 5000 }
-            );
-
-            logger.info(`[Scheduler] Webhook fired for reminder ${reminder._id}`);
+            try {
+              await axios.post(
+                webhookUrl,
+                {
+                  reminderId: reminder._id.toString(),
+                  interviewId: interview._id.toString(),
+                  candidateId: candidate._id.toString(),
+                  candidateEmail: candidateUser.email,
+                  candidateName: candidate.name,
+                  hrEmail: hrUser.email,
+                  hrName: hr.name,
+                  schedule: interview.schedule.toISOString(),
+                  durationMinutes: interview.durationMinutes,
+                  jobTitle: job.title,
+                  companyName,
+                  candidateEmailSent: reminder.emailSent,
+                  hrEmailSent: reminder.emailSent,
+                },
+                { timeout: 5000 }
+              );
+              logger.info(`[Scheduler] Webhook fired for reminder ${reminder._id}`);
+            } catch (webhookErr: any) {
+              logger.warn(
+                `[Scheduler] Webhook failed to fire for reminder ${reminder._id}: ${webhookErr.message}`
+              );
+            }
           } else {
             logger.warn('[Scheduler] N8N_WEBHOOK_INTERVIEW_REMINDER is not configured.');
           }

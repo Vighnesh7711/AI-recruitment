@@ -6,11 +6,13 @@ import { Plus, Edit3, Trash2, Power, AlertCircle, Sparkles, AlertTriangle } from
 interface Job {
   _id: string;
   title: string;
-  department: string;
-  experienceLevel: string;
-  status: 'draft' | 'active' | 'paused' | 'closed';
+  domain: string;
+  experience: string;
+  status: 'draft' | 'active' | 'closed';
   createdAt: string;
   applicationCount: number;
+  autoScreenEnabled?: boolean;
+  atsCutoffScore?: number;
 }
 
 export function HRJobs() {
@@ -42,13 +44,67 @@ export function HRJobs() {
   const handleToggleStatus = async (jobId: string, currentStatus: string) => {
     setActionId(jobId);
     setError('');
-    // If active, toggle to paused. If draft/paused/closed, toggle to active.
-    const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+    // If active, toggle to closed. If draft/closed, toggle to active.
+    const newStatus = currentStatus === 'active' ? 'closed' : 'active';
     try {
       const res = await api.patch(`/jobs/${jobId}/status`, { status: newStatus });
       setJobs((prev) => prev.map((j) => (j._id === jobId ? { ...j, status: res.data.status } : j)));
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Failed to update job status.';
+      setError(msg);
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleToggleAutoScreen = async (jobId: string, enabled: boolean, cutoff: number) => {
+    setActionId(jobId);
+    setError('');
+    try {
+      const res = await api.patch(`/jobs/${jobId}/status`, {
+        autoScreenEnabled: enabled,
+        atsCutoffScore: cutoff,
+      });
+      setJobs((prev) =>
+        prev.map((j) =>
+          j._id === jobId
+            ? {
+                ...j,
+                autoScreenEnabled: res.data.autoScreenEnabled,
+                atsCutoffScore: res.data.atsCutoffScore,
+              }
+            : j
+        )
+      );
+    } catch (err: any) {
+      const msg = err.response?.data?.error?.message || 'Failed to update auto-screening configuration.';
+      setError(msg);
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleCutoffChange = async (jobId: string, cutoff: number, enabled: boolean) => {
+    setActionId(jobId);
+    setError('');
+    try {
+      const res = await api.patch(`/jobs/${jobId}/status`, {
+        autoScreenEnabled: enabled,
+        atsCutoffScore: cutoff,
+      });
+      setJobs((prev) =>
+        prev.map((j) =>
+          j._id === jobId
+            ? {
+                ...j,
+                autoScreenEnabled: res.data.autoScreenEnabled,
+                atsCutoffScore: res.data.atsCutoffScore,
+              }
+            : j
+        )
+      );
+    } catch (err: any) {
+      const msg = err.response?.data?.error?.message || 'Failed to update ATS cutoff score.';
       setError(msg);
     } finally {
       setActionId(null);
@@ -78,17 +134,18 @@ export function HRJobs() {
 
   // Status Badge Helper
   const renderStatusBadge = (status: string) => {
+    const safeStatus = status || 'active';
     const config =
       {
         draft: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
         active: 'bg-green-500/10 text-green-400 border-green-500/20',
         paused: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
         closed: 'bg-red-500/10 text-red-400 border-red-500/20',
-      }[status] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+      }[safeStatus] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
 
     return (
       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${config}`}>
-        {status.toUpperCase()}
+        {safeStatus.toUpperCase()}
       </span>
     );
   };
@@ -161,6 +218,9 @@ export function HRJobs() {
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Auto-Screening
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Applicants
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -178,12 +238,53 @@ export function HRJobs() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
-                      {job.department}
+                      {job.domain}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 capitalize">
-                      {job.experienceLevel}
+                      {job.experience}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{renderStatusBadge(job.status)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-1.5 justify-center">
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={job.autoScreenEnabled || false}
+                            onChange={(e) =>
+                              handleToggleAutoScreen(
+                                job._id,
+                                e.target.checked,
+                                job.atsCutoffScore || 60
+                              )
+                            }
+                            disabled={actionId === job._id}
+                            className="w-4 h-4 rounded border-slate-800 text-indigo-600 focus:ring-indigo-500 bg-slate-950 cursor-pointer"
+                          />
+                          <span className="text-xs text-slate-300 font-medium">Auto-Screen</span>
+                        </label>
+                        {job.autoScreenEnabled && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-500">Cutoff:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={job.atsCutoffScore || 60}
+                              onChange={(e) =>
+                                handleCutoffChange(
+                                  job._id,
+                                  Number(e.target.value),
+                                  job.autoScreenEnabled || false
+                                )
+                              }
+                              disabled={actionId === job._id}
+                              className="w-12 bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-xs text-indigo-400 text-center focus:outline-none focus:border-indigo-500"
+                            />
+                            <span className="text-[10px] text-slate-500">%</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                       {job.applicationCount || 0}
                     </td>
@@ -194,13 +295,13 @@ export function HRJobs() {
                         disabled={actionId === job._id}
                         className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
                           job.status === 'active'
-                            ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20'
+                            ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
                             : 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
                         }`}
-                        title={job.status === 'active' ? 'Pause job' : 'Activate job'}
+                        title={job.status === 'active' ? 'Close job' : 'Activate job'}
                       >
                         <Power className="w-3.5 h-3.5" />
-                        {job.status === 'active' ? 'Pause' : 'Activate'}
+                        {job.status === 'active' ? 'Close' : 'Activate'}
                       </button>
 
                       {/* Edit */}

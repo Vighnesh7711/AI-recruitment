@@ -13,6 +13,8 @@ import { CandidateResume } from './pages/CandidateResume';
 import { CandidateApplications } from './pages/CandidateApplications';
 import { CandidateInterview } from './pages/CandidateInterview';
 import { HRInterviews } from './pages/HRInterviews';
+import { HRApplicationsDashboard } from './pages/HRApplicationsDashboard';
+import { Profile } from './pages/Profile';
 import { getSessionUser } from './lib/api';
 import './App.css';
 
@@ -33,6 +35,15 @@ function HRRouteGuard({ children }: GuardProps) {
 function CandidateRouteGuard({ children }: GuardProps) {
   const user = getSessionUser();
   if (!user || user.role !== 'candidate') {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
+// Guard component for any authenticated user (HR or candidate)
+function AuthRouteGuard({ children }: GuardProps) {
+  const user = getSessionUser();
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
@@ -62,6 +73,16 @@ function App() {
             {/* Authentication routes */}
             <Route path="/login" element={<Login onAuthChange={handleAuthChange} />} />
             <Route path="/register" element={<Register />} />
+
+            {/* Shared profile route (any authenticated user) */}
+            <Route
+              path="/profile"
+              element={
+                <AuthRouteGuard>
+                  <Profile />
+                </AuthRouteGuard>
+              }
+            />
 
             {/* Protected HR routes */}
             <Route
@@ -101,6 +122,14 @@ function App() {
               element={
                 <HRRouteGuard>
                   <HRInterviews />
+                </HRRouteGuard>
+              }
+            />
+            <Route
+              path="/hr/applications"
+              element={
+                <HRRouteGuard>
+                  <HRApplicationsDashboard />
                 </HRRouteGuard>
               }
             />

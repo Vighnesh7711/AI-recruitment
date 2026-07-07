@@ -4,8 +4,29 @@ export interface IApplication extends Document {
   candidateId: mongoose.Types.ObjectId;
   jobId: mongoose.Types.ObjectId;
   resumeId: mongoose.Types.ObjectId;
-  status: 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'interview_scheduled' | 'selected';
+  status:
+    | 'applied'
+    | 'under_review'
+    | 'shortlisted'
+    | 'rejected'
+    | 'interview_scheduled'
+    | 'selected'
+    | 'interviewed'
+    | 'offered'
+    | 'hired';
   appliedOn: Date;
+  atsScore?: number;
+  atsAnalysis?: {
+    overallScore: number;
+    matchedSkills: string[];
+    missing_skills: string[];
+    experienceMatch: number;
+    educationMatch: number;
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+  };
+  rejectionReason?: string;
 }
 
 const ApplicationSchema = new Schema<IApplication>(
@@ -30,7 +51,17 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     status: {
       type: String,
-      enum: ['applied', 'under_review', 'shortlisted', 'rejected', 'interview_scheduled', 'selected'],
+      enum: [
+        'applied',
+        'under_review',
+        'shortlisted',
+        'rejected',
+        'interview_scheduled',
+        'selected',
+        'interviewed',
+        'offered',
+        'hired',
+      ],
       default: 'applied',
       index: true,
     },
@@ -38,6 +69,22 @@ const ApplicationSchema = new Schema<IApplication>(
       type: Date,
       default: Date.now,
       required: true,
+    },
+    atsScore: {
+      type: Number,
+    },
+    atsAnalysis: {
+      overallScore: Number,
+      matchedSkills: [String],
+      missing_skills: [String],
+      experienceMatch: Number,
+      educationMatch: Number,
+      strengths: [String],
+      weaknesses: [String],
+      recommendations: [String],
+    },
+    rejectionReason: {
+      type: String,
     },
   },
   {
@@ -49,3 +96,4 @@ const ApplicationSchema = new Schema<IApplication>(
 ApplicationSchema.index({ candidateId: 1, jobId: 1 }, { unique: true });
 
 export const Application = mongoose.model<IApplication>('Application', ApplicationSchema, 'applications');
+

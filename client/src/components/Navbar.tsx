@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getSessionUser, clearSession } from '../lib/api';
-import { Briefcase, Building, LogOut, LayoutDashboard, User, FileText } from 'lucide-react';
+import { getSessionUser, clearSession, api, resolveAssetUrl } from '../lib/api';
+import { Briefcase, Building, LogOut, LayoutDashboard, FileText } from 'lucide-react';
 
 interface NavbarProps {
   onAuthChange: () => void;
@@ -9,6 +10,32 @@ interface NavbarProps {
 export function Navbar({ onAuthChange }: NavbarProps) {
   const navigate = useNavigate();
   const user = getSessionUser();
+  const [profileName, setProfileName] = useState('');
+  const [profilePicture, setProfilePicture] = useState('');
+
+  // Load lightweight profile info (name + picture) for the navbar chip.
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setProfileName('');
+      setProfilePicture('');
+      return;
+    }
+    api
+      .get('/profile/me')
+      .then((res) => {
+        if (cancelled) return;
+        setProfileName(res.data?.name || '');
+        setProfilePicture(resolveAssetUrl(res.data?.profilePicture));
+      })
+      .catch(() => {
+        /* non-critical — fall back to role label */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const handleLogout = () => {
     clearSession();
@@ -47,6 +74,13 @@ export function Navbar({ onAuthChange }: NavbarProps) {
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   Manage Jobs
+                </Link>
+                <Link
+                  to="/hr/applications"
+                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  Applications
                 </Link>
                 <Link
                   to="/hr/company-setup"
@@ -94,10 +128,29 @@ export function Navbar({ onAuthChange }: NavbarProps) {
             <div className="h-4 w-px bg-slate-800" />
 
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200">
-                <User className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-semibold uppercase tracking-wider">{user.role}</span>
-              </div>
+              <Link
+                to="/profile"
+                title="View profile"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500/40 hover:bg-slate-800/80 text-slate-200 transition-all"
+              >
+                {profilePicture ? (
+                  <img
+                    src={profilePicture}
+                    alt="Profile"
+                    className="w-6 h-6 rounded-full object-cover border border-slate-700"
+                  />
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-[11px] font-bold text-indigo-300">
+                    {(profileName || user.email).charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="text-xs font-semibold text-slate-200 max-w-[120px] truncate">
+                  {profileName || user.email}
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 border-l border-slate-700 pl-2">
+                  {user.role}
+                </span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"

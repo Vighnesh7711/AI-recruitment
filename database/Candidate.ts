@@ -9,6 +9,7 @@ export interface ICandidate extends Document {
   experience?: string;
   github?: string;
   linkedin?: string;
+  profilePicture?: string;
   createdAt: Date;
 }
 
@@ -46,6 +47,10 @@ const CandidateSchema = new Schema<ICandidate>(
       trim: true,
     },
     linkedin: {
+      type: String,
+      trim: true,
+    },
+    profilePicture: {
       type: String,
       trim: true,
     },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { api, openResumePdf } from '../lib/api';
 import {
   FileText,
   Upload,
@@ -8,6 +8,7 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -85,6 +86,26 @@ export function CandidateResume() {
       setError(msg);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleView = async (resumeId: string) => {
+    setError('');
+    const err = await openResumePdf(resumeId);
+    if (err) setError(err);
+  };
+
+  const handleDelete = async (resumeId: string) => {
+    if (!window.confirm('Are you sure you want to delete this resume?')) return;
+    try {
+      setError('');
+      setSuccess('');
+      await api.delete(`/resume/${resumeId}`);
+      setResumes((prev) => prev.filter((r) => r._id !== resumeId));
+      setSuccess('Resume deleted successfully!');
+    } catch (err: any) {
+      const msg = err.response?.data?.error?.message || 'Failed to delete resume.';
+      setError(msg);
     }
   };
 
@@ -192,15 +213,22 @@ export function CandidateResume() {
                     </div>
                   </div>
 
-                  <a
-                    href={resume.resumeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-850 hover:bg-slate-900 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    View PDF
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleView(resume._id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-850 hover:bg-slate-900 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      View PDF
+                    </button>
+                    <button
+                      onClick={() => handleDelete(resume._id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-950 bg-red-950/20 hover:bg-red-900/30 text-xs font-semibold text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

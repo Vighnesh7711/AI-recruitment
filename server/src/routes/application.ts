@@ -1,9 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import { Application, JobPosting, Resume, User, Company, Candidate, Hr } from '../../../database';
+import { Application, JobPosting, Resume, User, Company, Candidate, Hr, ResumeAnalysis } from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
 import logger from '../lib/logger';
+import { autoScheduleInterview } from '../utils/autoSchedule';
 
 const router = Router();
 
@@ -50,10 +51,25 @@ router.post(
         throw new AppError('This resume does not belong to you.', 403, 'FORBIDDEN');
       }
 
-      // 3. Verify no existing application
+      // 3. Handle existing application: block duplicates, but allow reapplying
+      //    over a previously rejected one (reuses the row to respect the unique
+      //    (candidateId, jobId) index).
       const existing = await Application.findOne({ jobId, candidateId: candidate._id });
       if (existing) {
-        throw new AppError('You have already applied for this job.', 409, 'ALREADY_APPLIED');
+        if (existing.status !== 'rejected') {
+          throw new AppError('You have already applied for this job.', 409, 'ALREADY_APPLIED');
+        }
+
+        existing.resumeId = resume._id;
+        existing.status = 'applied';
+        existing.appliedOn = new Date();
+        existing.rejectionReason = undefined;
+        existing.atsScore = undefined;
+        existing.atsAnalysis = undefined;
+        await existing.save();
+
+        res.status(200).json(existing);
+        return;
       }
 
       // 4. Create the application
@@ -147,8 +163,11 @@ router.get(
       if (!hr) {
         throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
+      if (!hr.companyId) {
+        throw new AppError('Please complete your company profile before viewing applications.', 400, 'COMPANY_REQUIRED');
+      }
 
-      const jobs = await JobPosting.find({ hrId: hr._id });
+      const jobs = await JobPosting.find({ companyId: hr.companyId });
       const jobIds = jobs.map((j) => j._id);
 
       const applications = await Application.find({ jobId: { $in: jobIds } })
@@ -159,46 +178,35 @@ router.get(
             select: 'email',
           },
         })
-        .populate({
-          path: 'jobId',
-          select: 'title domain location companyId',
-          populate: {
-            path: 'companyId',
-            select: 'companyName logo',
-          },
-        })
+        .populate('jobId')
+        .populate('resumeId')
         .sort({ appliedOn: -1 });
 
-      const response = applications.map((app) => {
-        const cand: any = app.candidateId;
-        const jobObj: any = app.jobId;
-        const companyObj: any = jobObj ? jobObj.companyId : null;
-        const userObj: any = cand ? cand.userId : null;
+      const response = applications.map((app: any) => {
+        const cand = app.candidateId;
+        const userObj = cand?.userId;
+        const job = app.jobId;
+        const resume = app.resumeId;
+
         return {
           _id: app._id,
           status: app.status,
-          appliedOn: app.appliedOn,
+          atsScore: app.atsScore,
+          atsAnalysis: app.atsAnalysis,
+          resumeId: resume ? resume._id : '',
+          resumePath: resume ? resume.resumeUrl : '',
           createdAt: app.appliedOn,
           candidateId: cand ? {
             _id: cand._id,
             fullName: cand.name,
-            name: cand.name,
             email: userObj ? userObj.email : '',
-            phone: cand.phone || '',
+            profilePicture: cand.profilePicture || '',
           } : null,
-          jobId: jobObj ? {
-            _id: jobObj._id,
-            title: jobObj.title,
-            domain: jobObj.domain,
-            department: jobObj.domain,
-            location: jobObj.location,
-            companyId: companyObj ? {
-              _id: companyObj._id,
-              name: companyObj.companyName,
-              companyName: companyObj.companyName,
-              logoUrl: companyObj.logo,
-              logo: companyObj.logo,
-            } : null,
+          jobId: job ? {
+            _id: job._id,
+            title: job.title,
+            autoScreenEnabled: job.autoScreenEnabled || false,
+            atsCutoffScore: job.atsCutoffScore || 60,
           } : null,
         };
       });
@@ -283,6 +291,58 @@ router.get(
 );
 
 /**
+ * DELETE /application/:id
+ * Candidate cancels (withdraws) their own application. The record is removed
+ * entirely, freeing the unique (candidateId, jobId) index so the candidate can
+ * apply again later. Not allowed once the application has reached a final state.
+ */
+router.delete(
+  '/:id',
+  requireAuth,
+  requireRole('candidate'),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      const candidate = await Candidate.findOne({ userId: req.user!._id });
+      if (!candidate) {
+        throw new AppError('Candidate profile not found.', 404, 'NOT_FOUND');
+      }
+
+      const application = await Application.findById(id);
+      if (!application) {
+        throw new AppError('Application not found.', 404, 'NOT_FOUND');
+      }
+
+      // Ownership check: must be candidate's own application
+      if (application.candidateId.toString() !== candidate._id.toString()) {
+        throw new AppError(
+          'You do not have permission to cancel this application.',
+          403,
+          'FORBIDDEN'
+        );
+      }
+
+      // Cannot cancel once the outcome is final.
+      const finalStatuses = ['selected', 'hired', 'rejected'];
+      if (finalStatuses.includes(application.status)) {
+        throw new AppError(
+          'This application can no longer be cancelled.',
+          400,
+          'CANNOT_CANCEL'
+        );
+      }
+
+      await application.deleteOne();
+
+      res.json({ message: 'Application cancelled successfully.' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * PATCH /application/:id/status
  */
 router.patch(
@@ -292,20 +352,33 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
-
-      if (!status || !['shortlisted', 'rejected'].includes(status)) {
-        throw new AppError('Status must be shortlisted or rejected.', 400, 'VALIDATION_ERROR');
-      }
+      const { status, rejectionReason } = req.body;
 
       const hr = await Hr.findOne({ userId: req.user!._id });
       if (!hr) {
         throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
+      if (!hr.companyId) {
+        throw new AppError('Please complete your company profile first.', 400, 'COMPANY_REQUIRED');
+      }
+
+      const validStatuses = [
+        'applied',
+        'under_review',
+        'shortlisted',
+        'interview_scheduled',
+        'interviewed',
+        'offered',
+        'hired',
+        'rejected',
+      ];
+      if (!status || !validStatuses.includes(status)) {
+        throw new AppError('Provided status option value is invalid.', 400, 'VALIDATION_ERROR');
+      }
 
       const application = await Application.findById(id);
       if (!application) {
-        throw new AppError('Application not found.', 404, 'NOT_FOUND');
+        throw new AppError('Application target records not found.', 404, 'NOT_FOUND');
       }
 
       const job = await JobPosting.findById(application.jobId);
@@ -313,20 +386,60 @@ router.patch(
         throw new AppError('Associated job posting not found.', 404, 'NOT_FOUND');
       }
 
-      // Check if current HR is the one who posted the job
-      if (job.hrId.toString() !== hr._id.toString()) {
+      // Check if job belongs to HR's company
+      if (job.companyId.toString() !== hr.companyId.toString()) {
         throw new AppError(
-          'You do not have permission to update the status of this application.',
+          'Unauthorized update permissions access.',
           403,
           'FORBIDDEN'
         );
       }
 
-      application.status = status;
+      application.status = status as any;
+      if (rejectionReason) {
+        application.rejectionReason = rejectionReason;
+      }
       await application.save();
 
+      if (status === 'rejected') {
+        const webhookUrl = process.env.N8N_WEBHOOK_RESUME_REJECTED;
+        if (webhookUrl) {
+          try {
+            const candidate = await Candidate.findById(application.candidateId).populate('userId');
+            if (candidate) {
+              const userObj: any = candidate.userId;
+              await axios.post(
+                webhookUrl,
+                {
+                  candidateId: application.candidateId.toString(),
+                  candidateEmail: userObj ? userObj.email : '',
+                  candidateName: candidate.name,
+                  applicationId: application._id.toString(),
+                  atsScore: application.atsScore || 0,
+                  rejectionReason: rejectionReason || application.rejectionReason || 'Manually rejected by HR.',
+                },
+                { timeout: 5000 }
+              );
+              logger.info(
+                `[Application] N8N webhook fired: resume-rejected for application ${application._id}`
+              );
+            }
+          } catch (err: any) {
+            logger.warn(`[Application] N8N webhook failed to fire: ${err.message}`);
+          }
+        }
+      }
+
+      if (status === 'shortlisted') {
+        const hrUserEmail = req.user!.email;
+        const hrUserId = req.user!._id;
+        autoScheduleInterview(application._id.toString(), hrUserId.toString(), hrUserEmail).catch(err => {
+          logger.error(`[Application] Auto-schedule error: ${err.message}`);
+        });
+      }
+
       res.json({
-        message: `Application status updated to ${status}.`,
+        message: 'Application status modified successfully.',
         application,
       });
     } catch (error) {
@@ -350,6 +463,9 @@ router.post(
       if (!hr) {
         throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
+      if (!hr.companyId) {
+        throw new AppError('Please complete your company profile first.', 400, 'COMPANY_REQUIRED');
+      }
 
       const application = await Application.findById(id);
       if (!application) {
@@ -361,8 +477,8 @@ router.post(
         throw new AppError('Associated job posting not found.', 404, 'NOT_FOUND');
       }
 
-      // Check HR ownership
-      if (job.hrId.toString() !== hr._id.toString()) {
+      // Check HR ownership via companyId
+      if (job.companyId.toString() !== hr.companyId.toString()) {
         throw new AppError(
           'You do not have permission to send an offer for this application.',
           403,

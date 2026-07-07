@@ -5,6 +5,7 @@ export interface IHr extends Document {
   companyId?: mongoose.Types.ObjectId;
   name: string;
   designation?: string;
+  profilePicture?: string;
   createdAt: Date;
 }
 
@@ -27,6 +28,10 @@ const HrSchema = new Schema<IHr>(
       trim: true,
     },
     designation: {
+      type: String,
+      trim: true,
+    },
+    profilePicture: {
       type: String,
       trim: true,
     },

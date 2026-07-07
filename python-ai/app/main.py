@@ -14,6 +14,7 @@ import logging
 import httpx
 import fitz  # PyMuPDF
 from google import genai
+from google.genai import types
 
 load_dotenv()
 
@@ -237,69 +238,36 @@ async def analyze_resume(body: AnalyzeResumeRequest):
         f"## Job Description:\n{body.jobDescription}\n\n"
         f"## Required Skills:\n{skills_str}\n\n"
         f"Analyze how well this resume matches the job description and required skills. "
-        f"Consider skills match, experience relevance, education, and overall fit.\n\n"
-        f'Return ONLY valid JSON matching this schema, no markdown fences, no extra text: '
-        f'{{"ats_score": number 0-100, "matched_skills": string[], "missing_skills": string[], '
-        f'"strengths": string[], "weaknesses": string[], "recommendations": string[]}}'
+        f"Consider skills match, experience relevance, education, and overall fit."
     )
 
-    max_attempts = 2
-    last_raw = ""
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": AnalyzeResumeResponse
+            }
+        )
 
-    for attempt in range(max_attempts):
-        try:
-            current_prompt = prompt
-            if attempt == 1:
-                current_prompt = (
-                    prompt
-                    + "\n\nIMPORTANT: Your last response was not valid JSON. "
-                    "Please return ONLY the raw JSON object, no markdown fences or extra text."
-                )
+        result_json = response.text or ""
+        result = json.loads(result_json)
 
-            response = gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=current_prompt,
-            )
-
-            last_raw = response.text or ""
-            cleaned = _strip_fences(last_raw)
-
-            result = json.loads(cleaned)
-
-            # Validate required keys
-            required_keys = ["ats_score", "matched_skills", "missing_skills", "strengths", "weaknesses", "recommendations"]
-            for key in required_keys:
-                if key not in result:
-                    raise ValueError(f"Missing key: {key}")
-
-            return AnalyzeResumeResponse(
-                ats_score=int(result["ats_score"]),
-                matched_skills=result["matched_skills"],
-                missing_skills=result["missing_skills"],
-                strengths=result["strengths"],
-                weaknesses=result["weaknesses"],
-                recommendations=result["recommendations"],
-            )
-
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning(f"Attempt {attempt + 1} failed to parse Gemini response: {e}")
-            if attempt == max_attempts - 1:
-                logger.error(f"Gemini raw output (final failure): {last_raw}")
-                raise HTTPException(
-                    status_code=502,
-                    detail={
-                        "error": {
-                            "code": "AI_PARSE_FAILED",
-                            "message": f"Gemini returned invalid JSON after {max_attempts} attempts.",
-                        }
-                    },
-                )
-        except Exception as e:
-            logger.error(f"Gemini API call failed: {e}")
-            raise HTTPException(
-                status_code=502,
-                detail={"error": {"code": "AI_ERROR", "message": f"Gemini API error: {str(e)}"}},
-            )
+        return AnalyzeResumeResponse(
+            ats_score=int(result["ats_score"]),
+            matched_skills=result["matched_skills"],
+            missing_skills=result["missing_skills"],
+            strengths=result["strengths"],
+            weaknesses=result["weaknesses"],
+            recommendations=result["recommendations"],
+        )
+    except Exception as e:
+        logger.error(f"Gemini API call or response parsing failed: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={"error": {"code": "AI_ERROR", "message": f"Gemini API error: {str(e)}"}},
+        )
 
 
 # ── POST /evaluate-answer ──
@@ -322,73 +290,52 @@ async def evaluate_answer(body: EvaluateAnswerRequest):
         f"## Expected/Sample Answer:\n{body.expectedAnswer}\n\n"
         f"## Candidate's Answer:\n{body.candidateAnswer}\n\n"
         f"Evaluate the candidate's answer. Provide integer scores between 0 and 10 for technical depth, "
-        f"communication quality, confidence level, grammar/clarity, and overall match.\n\n"
-        f"Return ONLY valid JSON, no markdown fences, no extra text: "
-        f'{{"technical_score": number 0-10, "communication_score": number 0-10, "confidence_score": number 0-10, '
-        f'"grammar_score": number 0-10, "overall_score": number 0-10, "feedback": string}}'
+        f"communication quality, confidence level, grammar/clarity, and overall match."
     )
 
-    max_attempts = 2
-    last_raw = ""
+    retries = 5
+    delay = 3.0
+    response = None
 
-    for attempt in range(max_attempts):
+    for i in range(retries):
         try:
-            current_prompt = prompt
-            if attempt == 1:
-                current_prompt = (
-                    prompt
-                    + "\n\nIMPORTANT: Your last response was not valid JSON. "
-                    "Please return ONLY the raw JSON object, no markdown fences or extra text."
-                )
-
             response = gemini_client.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=current_prompt,
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": EvaluateAnswerResponse
+                }
             )
-
-            last_raw = response.text or ""
-            cleaned = _strip_fences(last_raw)
-
-            result = json.loads(cleaned)
-
-            # Validate required keys
-            required_keys = [
-                "technical_score",
-                "communication_score",
-                "confidence_score",
-                "grammar_score",
-                "overall_score",
-                "feedback",
-            ]
-            for key in required_keys:
-                if key not in result:
-                    raise ValueError(f"Missing key: {key}")
-
-            return EvaluateAnswerResponse(
-                technical_score=int(result["technical_score"]),
-                communication_score=int(result["communication_score"]),
-                confidence_score=int(result["confidence_score"]),
-                grammar_score=int(result["grammar_score"]),
-                overall_score=int(result["overall_score"]),
-                feedback=str(result["feedback"]),
-            )
-
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning(f"Attempt {attempt + 1} failed to parse Gemini response for evaluate-answer: {e}")
-            if attempt == max_attempts - 1:
-                logger.error(f"Gemini raw output (final failure): {last_raw}")
+            break
+        except Exception as e:
+            if "429" in str(e) and i < retries - 1:
+                logger.warning(f"Gemini API rate limit (429) hit during evaluation. Retrying in {delay}s...")
+                import time
+                time.sleep(delay)
+                delay *= 2.0
+            else:
+                logger.error(f"Gemini API call failed: {e}")
                 raise HTTPException(
                     status_code=502,
-                    detail={
-                        "error": {
-                            "code": "AI_PARSE_FAILED",
-                            "message": f"Gemini returned invalid JSON after {max_attempts} attempts.",
-                        }
-                    },
+                    detail={"error": {"code": "AI_ERROR", "message": f"Gemini API error: {str(e)}"}},
                 )
-        except Exception as e:
-            logger.error(f"Gemini API call failed: {e}")
-            raise HTTPException(
-                status_code=502,
-                detail={"error": {"code": "AI_ERROR", "message": f"Gemini API error: {str(e)}"}},
-            )
+
+    try:
+        result_json = response.text or ""
+        result = json.loads(result_json)
+
+        return EvaluateAnswerResponse(
+            technical_score=int(result["technical_score"]),
+            communication_score=int(result["communication_score"]),
+            confidence_score=int(result["confidence_score"]),
+            grammar_score=int(result["grammar_score"]),
+            overall_score=int(result["overall_score"]),
+            feedback=str(result["feedback"]),
+        )
+    except Exception as e:
+        logger.error(f"Failed to parse Gemini evaluation JSON response: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={"error": {"code": "PARSE_ERROR", "message": f"Failed to parse Gemini response: {str(e)}"}},
+        )

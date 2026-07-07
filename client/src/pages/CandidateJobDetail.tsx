@@ -69,10 +69,12 @@ export function CandidateJobDetail() {
           setSelectedResumeId(resumesRes.data[0]._id);
         }
 
-        // Check if candidate already applied by listing my applications
+        // Check if candidate already applied by listing my applications.
+        // A rejected application does not block reapplying, so treat it as
+        // not-yet-applied and show the Apply UI again.
         const appsRes = await api.get('/application/mine');
-        const applied = appsRes.data.some((app: any) => app.jobId?._id === id);
-        setAlreadyApplied(applied);
+        const existingApp = appsRes.data.find((app: any) => app.jobId?._id === id);
+        setAlreadyApplied(!!existingApp && existingApp.status !== 'rejected');
       } catch (err: any) {
         const msg = err.response?.data?.error?.message || 'Failed to load details.';
         setMessage({ type: 'error', text: msg });

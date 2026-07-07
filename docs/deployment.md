@@ -167,13 +167,13 @@ docker run -d --name n8n \
 | Registration | Webhook | Sends welcome email on signup |
 | Resume Rejected | Webhook | Sends improvement feedback email with weaknesses & recommendations |
 | Interview Scheduled | Webhook | Sends invite email → creates Calendar event → calls back `/interview/:id/calendar-synced` |
-| Interview Reminder | Schedule (15 min) | Polls `/interview/reminders/due` → sends reminder email → marks sent via PATCH |
+| Interview Reminder | Webhook | Sends reminder email on HTTP POST request |
 | Interview Complete | Webhook | Appends to Google Sheets → emails HR with evaluation summary |
 | Offer Email | Webhook | Sends official offer letter to candidate |
 
 ### 5.4 Production URLs
 
-Update the HTTP Request nodes in `interview_reminder.json` and `interview_scheduled.json` to use your deployed Render server URL instead of `http://localhost:5000`.
+Update the HTTP Request node in `interview_scheduled.json` to use your deployed Render server URL instead of `http://localhost:5000`.
 
 ---
 
@@ -204,7 +204,7 @@ Update the HTTP Request nodes in `interview_reminder.json` and `interview_schedu
 - [ ] Cloudinary credentials configured
 - [ ] All 6 n8n workflows imported, credentials connected, and activated
 - [ ] n8n webhook URLs set in server env vars
-- [ ] HTTP Request nodes in `interview_reminder` and `interview_scheduled` updated to production server URL
+- [ ] HTTP Request node in `interview_scheduled` updated to production server URL
 - [ ] Google Sheets spreadsheet ID set in `interview_complete` workflow
 - [ ] Vercel client deployed with correct `VITE_API_URL`
 - [ ] Test registration → resume upload → analysis → shortlist → interview schedule → avatar interview → evaluation → offer flow end-to-end

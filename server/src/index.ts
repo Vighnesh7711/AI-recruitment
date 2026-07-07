@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import logger from './lib/logger';
@@ -11,6 +12,7 @@ import jobsRouter from './routes/jobs';
 import resumeRouter from './routes/resume';
 import applicationRouter from './routes/application';
 import interviewRouter from './routes/interview';
+import profileRouter from './routes/profile';
 import { startScheduler } from './scheduler';
 import { errorHandler } from './utils/errors';
 
@@ -35,6 +37,14 @@ const morganStream = {
 };
 app.use(morgan('dev', { stream: morganStream }));
 
+// ── Static Uploads (local fallback for profile pictures when Cloudinary is off) ──
+const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
+app.use(
+  '/uploads',
+  cors({ origin: [process.env.CLIENT_URL, 'http://localhost:5173'].filter(Boolean) as string[] }),
+  express.static(uploadDir)
+);
+
 // ── Rate Limiting (General) ──
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -54,6 +64,7 @@ app.use('/api/jobs', jobsRouter);
 app.use('/api/resume', resumeRouter);
 app.use('/api/application', applicationRouter);
 app.use('/api/interview', interviewRouter);
+app.use('/api/profile', profileRouter);
 
 // ── Health Check ──
 app.get('/health', (_req, res) => {

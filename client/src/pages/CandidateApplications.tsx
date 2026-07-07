@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
+import { api, resolveAssetUrl } from '../lib/api';
 import {
   Briefcase,
   MapPin,
@@ -10,7 +10,21 @@ import {
   CheckCircle2,
   XCircle,
   Video,
+  RotateCcw,
+  Ban,
+  AlertTriangle,
+  UserSquare2,
+  Mail,
 } from 'lucide-react';
+
+interface RecruiterProfile {
+  _id: string;
+  name: string;
+  email: string;
+  designation?: string;
+  profilePicture?: string;
+  company?: { _id: string; companyName: string; logo?: string } | null;
+}
 
 interface ApplicationItem {
   _id: string;
@@ -44,10 +58,48 @@ export function CandidateApplications() {
   const [interviewMap, setInterviewMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+
+  // Recruiter profile modal
+  const [recruiter, setRecruiter] = useState<RecruiterProfile | null>(null);
+  const [loadingRecruiter, setLoadingRecruiter] = useState(false);
+
+  const viewRecruiter = async (applicationId: string) => {
+    setLoadingRecruiter(true);
+    setRecruiter(null);
+    try {
+      const res = await api.get(`/profile/hr/by-application/${applicationId}`);
+      setRecruiter(res.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to load recruiter details.');
+      setLoadingRecruiter(false);
+    } finally {
+      setLoadingRecruiter(false);
+    }
+  };
 
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  const handleCancel = async (appId: string) => {
+    try {
+      setCancelingId(appId);
+      setError('');
+      await api.delete(`/application/${appId}`);
+      setConfirmCancelId(null);
+      await fetchApplications();
+    } catch (err: any) {
+      const msg = err.response?.data?.error?.message || 'Failed to cancel application.';
+      setError(msg);
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
+  // Cancel is only possible before the outcome is final.
+  const canCancel = (status: string) => !['selected', 'hired', 'rejected'].includes(status);
 
   const fetchApplications = async () => {
     try {
@@ -221,11 +273,17 @@ export function CandidateApplications() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:items-end text-xs text-slate-500">
+                  <div className="flex flex-col sm:items-end gap-2 text-xs text-slate-500">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="w-4 h-4" /> Applied on{' '}
                       {new Date(app.createdAt).toLocaleDateString()}
                     </span>
+                    <button
+                      onClick={() => viewRecruiter(app._id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-300 hover:text-white hover:border-indigo-500/40 hover:bg-slate-800/60 text-xs font-semibold transition-colors"
+                    >
+                      <UserSquare2 className="w-3.5 h-3.5 text-indigo-400" /> View Recruiter
+                    </button>
                   </div>
                 </div>
 
@@ -243,11 +301,127 @@ export function CandidateApplications() {
                     </button>
                   </div>
                 )}
+
+                {/* Reapply after rejection */}
+                {app.status === 'rejected' && app.jobId?._id && (
+                  <div className="mt-4 flex flex-col items-center gap-2">
+                    <p className="text-xs text-slate-500">
+                      Not the outcome you hoped for? You can apply again with an updated resume.
+                    </p>
+                    <button
+                      onClick={() => navigate(`/candidate/jobs/${app.jobId!._id}`)}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
+                    >
+                      <RotateCcw className="w-4 h-4" /> Reapply
+                    </button>
+                  </div>
+                )}
+
+                {/* Cancel Application */}
+                {canCancel(app.status) && (
+                  <div className="mt-4 flex justify-center">
+                    {confirmCancelId === app._id ? (
+                      <div className="flex flex-col sm:flex-row items-center gap-3 rounded-xl bg-red-500/5 border border-red-500/20 px-4 py-3">
+                        <span className="flex items-center gap-1.5 text-xs text-red-300">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          Cancel this application? This cannot be undone.
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleCancel(app._id)}
+                            disabled={cancelingId === app._id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+                          >
+                            {cancelingId === app._id ? (
+                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <Ban className="w-3.5 h-3.5" />
+                            )}
+                            Yes, cancel
+                          </button>
+                          <button
+                            onClick={() => setConfirmCancelId(null)}
+                            disabled={cancelingId === app._id}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors disabled:opacity-60"
+                          >
+                            Keep it
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmCancelId(app._id)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-800 text-slate-400 hover:text-red-300 hover:border-red-500/30 text-xs font-semibold transition-colors"
+                      >
+                        <Ban className="w-3.5 h-3.5" /> Cancel Application
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Recruiter Profile Modal */}
+      {(recruiter || loadingRecruiter) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+          onClick={() => { setRecruiter(null); setLoadingRecruiter(false); }}
+        >
+          <div
+            className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { setRecruiter(null); setLoadingRecruiter(false); }}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white text-sm font-semibold border border-slate-800 rounded-lg px-2.5 py-1 hover:bg-slate-800"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-white">
+              Recruiter <UserSquare2 className="text-indigo-400 w-5 h-5" />
+            </h2>
+
+            {loadingRecruiter ? (
+              <div className="flex justify-center py-12">
+                <span className="w-8 h-8 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+              </div>
+            ) : recruiter ? (
+              <div className="flex flex-col items-center text-center gap-4">
+                {recruiter.profilePicture ? (
+                  <img
+                    src={resolveAssetUrl(recruiter.profilePicture)}
+                    alt={recruiter.name}
+                    className="w-24 h-24 rounded-full object-cover border-2 border-slate-800"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-indigo-500/10 border-2 border-indigo-500/20 flex items-center justify-center text-4xl font-bold text-indigo-400">
+                    {recruiter.name?.charAt(0) || 'H'}
+                  </div>
+                )}
+                <div>
+                  <div className="text-xl font-bold text-white">{recruiter.name}</div>
+                  {recruiter.designation && (
+                    <div className="text-sm text-indigo-300 mt-0.5">{recruiter.designation}</div>
+                  )}
+                  <div className="text-xs text-slate-400 flex items-center gap-1.5 justify-center mt-2">
+                    <Mail className="w-3.5 h-3.5" /> {recruiter.email}
+                  </div>
+                </div>
+                {recruiter.company && (
+                  <div className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-300 text-sm">
+                    <Building className="w-4 h-4 text-indigo-400" />
+                    {recruiter.company.companyName}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

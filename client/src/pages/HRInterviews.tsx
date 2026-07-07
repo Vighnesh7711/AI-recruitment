@@ -80,8 +80,8 @@ export function HRInterviews() {
       const allApps: Application[] = appsRes.data;
       // Filter for 'shortlisted' status (yet to be scheduled)
       setShortlisted(allApps.filter((app) => app.status === 'shortlisted'));
-      // Filter for 'under_review' status
-      setUnderReview(allApps.filter((app) => app.status === 'under_review'));
+      // Filter for 'under_review' status (including newly 'applied' applications)
+      setUnderReview(allApps.filter((app) => app.status === 'under_review' || app.status === 'applied'));
 
       // 2. Fetch already scheduled interviews
       const interviewsRes = await api.get('/interview');
@@ -260,7 +260,7 @@ export function HRInterviews() {
                             </h3>
                             {app.atsScore !== undefined && (
                               <span className="text-xs font-semibold px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
-                                ATS: {app.atsScore}
+                                ATS: {app.atsScore}/100
                               </span>
                             )}
                           </div>
@@ -318,7 +318,7 @@ export function HRInterviews() {
                           </h3>
                           {app.atsScore !== undefined && (
                             <span className="text-xs font-semibold px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
-                              ATS: {app.atsScore}
+                              ATS: {app.atsScore}/100
                             </span>
                           )}
                         </div>

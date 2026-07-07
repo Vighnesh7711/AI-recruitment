@@ -11,6 +11,8 @@ export interface IJobPosting extends Document {
   salary: string;
   deadline: Date;
   status: 'draft' | 'active' | 'closed';
+  autoScreenEnabled?: boolean;
+  atsCutoffScore?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,6 +68,14 @@ const JobPostingSchema = new Schema<IJobPosting>(
       enum: ['draft', 'active', 'closed'],
       default: 'active',
       index: true,
+    },
+    autoScreenEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    atsCutoffScore: {
+      type: Number,
+      default: 60,
     },
   },
   {

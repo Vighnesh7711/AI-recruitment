@@ -44,6 +44,11 @@ interface Session {
 
 const sessions = new Map<string, Session>();
 const listenResolvers = new Map<string, (audioBase64: string) => void>();
+// Buffers audio that arrived via /respond BEFORE the server called /avatar/listen.
+// The client posts its recording to /respond first, then triggers /answer (which
+// calls /avatar/listen), so without this buffer the audio would be dropped and
+// every voice answer would time out. Keyed by sessionId.
+const pendingResponses = new Map<string, string>();
 
 // A short base64 encoded silent 1-second MP3 to use as a fallback audio block.
 const silentMp3Base64 = 
@@ -62,6 +67,39 @@ function generateSimulatedCues(text: string, durationSeconds: number) {
     start = end;
   }
   return cues;
+}
+
+// Convert a base64 WebM/Opus recording to base64 WAV (16kHz mono PCM) using
+// ffmpeg. Returns null if ffmpeg is unavailable or the conversion fails, so the
+// caller can fall back to the original audio bytes.
+async function convertWebmToWav(webmBase64: string, sessionId: string): Promise<string | null> {
+  const tempDir = path.join(process.cwd(), 'tmp');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+  }
+  const id = `${sessionId}_${Math.random().toString(36).substr(2, 6)}`;
+  const webmPath = path.join(tempDir, `in_${id}.webm`);
+  const wavPath = path.join(tempDir, `out_${id}.wav`);
+
+  try {
+    fs.writeFileSync(webmPath, Buffer.from(webmBase64, 'base64'));
+    // -ar 16000 -ac 1 → 16kHz mono, the format speech models expect.
+    await execPromise(`ffmpeg -y -i "${webmPath}" -ar 16000 -ac 1 "${wavPath}"`);
+    if (fs.existsSync(wavPath)) {
+      const wavBuffer = fs.readFileSync(wavPath);
+      return wavBuffer.toString('base64');
+    }
+    return null;
+  } catch (err: any) {
+    console.warn(`[avatar-service] webm→wav conversion failed, using original audio: ${err.message}`);
+    return null;
+  } finally {
+    [webmPath, wavPath].forEach((p) => {
+      if (fs.existsSync(p)) {
+        try { fs.unlinkSync(p); } catch (e) { /* ignore */ }
+      }
+    });
+  }
 }
 
 // Convert MP3 to WAV and run Rhubarb Lip Sync CLI
@@ -219,12 +257,23 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
     return;
   }
 
-  // Push 'listen' action to the queue so the client knows it should record
-  session.actions.push({ type: 'listen' });
+  // NOTE: we intentionally do NOT push a { type: 'listen' } action here.
+  // The client transitions to its recording UI on its own once the spoken
+  // question audio ends. Queuing a stray 'listen' would be shifted off ahead
+  // of the next question's 'speak' action and silence the avatar from Q2 on.
 
-  // Wait for the client response
+  // Wait for the client response (or use audio already buffered via /respond)
   try {
     const audioBase64 = await new Promise<string>((resolve, reject) => {
+      // If the client already posted its recording to /respond before we got
+      // here, consume the buffered audio immediately instead of waiting.
+      const buffered = pendingResponses.get(sessionId);
+      if (buffered) {
+        pendingResponses.delete(sessionId);
+        resolve(buffered);
+        return;
+      }
+
       const timeout = setTimeout(() => {
         listenResolvers.delete(sessionId);
         reject(new Error('Microphone response timeout'));
@@ -236,11 +285,78 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
       });
     });
 
-    // Transcribe audio using Whisper
+    // Transcribe audio using Gemini, then Whisper as a fallback.
     let transcript = '';
+    const geminiKey = process.env.GEMINI_API_KEY;
     const openAiKey = process.env.OPENAI_API_KEY;
-    if (openAiKey && openAiKey !== '-') {
+
+    // The browser records WebM/Opus. Convert it to WAV (16kHz mono) via ffmpeg so
+    // speech-to-text models receive a widely-supported PCM format — this noticeably
+    // improves transcription reliability. If conversion fails we fall back to the
+    // original WebM bytes so we still attempt a transcription.
+    let geminiMime = 'audio/webm';
+    let geminiData = audioBase64;
+    const converted = await convertWebmToWav(audioBase64, sessionId);
+    if (converted) {
+      geminiMime = 'audio/wav';
+      geminiData = converted;
+    }
+
+    if (geminiKey && geminiKey !== '-') {
+      const retries = 5;
+      let delay = 3000;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+
+      for (let i = 0; i < retries; i++) {
+        try {
+          console.log(`[avatar-service] Transcribing audio for session ${sessionId} using Gemini 2.5 Flash (Attempt ${i + 1}/${retries})...`);
+          const response = await axios.post(
+            url,
+            {
+              contents: [
+                {
+                  parts: [
+                    {
+                      inlineData: {
+                        mimeType: geminiMime,
+                        data: geminiData,
+                      },
+                    },
+                    {
+                      text: 'Transcribe the audio accurately into English text. Return ONLY the transcription text, with no preamble, formatting, or extra commentary. If there is no audible speech or only noise/silence, return "No response recorded.".',
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 30000,
+            }
+          );
+
+          const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          transcript = text.trim();
+          console.log(`[avatar-service] Gemini transcription success: "${transcript}"`);
+          break;
+        } catch (err: any) {
+          const status = err.response?.status;
+          if (status === 429 && i < retries - 1) {
+            console.warn(`[avatar-service] Gemini rate limit (429) hit. Retrying in ${delay}ms...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= 2;
+          } else {
+            console.error('[avatar-service] Gemini transcription failed:', err.response?.data || err.message);
+            break;
+          }
+        }
+      }
+    }
+
+    // Fallback to Whisper if Gemini failed or wasn't configured
+    if (!transcript && openAiKey && openAiKey !== '-') {
       try {
+        console.log(`[avatar-service] Transcribing audio for session ${sessionId} using Whisper...`);
         const audioBuffer = Buffer.from(audioBase64, 'base64');
         const tempDir = path.join(process.cwd(), 'tmp');
         if (!fs.existsSync(tempDir)) {
@@ -261,20 +377,29 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
               ...formData.getHeaders(),
               Authorization: `Bearer ${openAiKey}`,
             },
+            timeout: 30000,
           }
         );
 
         transcript = whisperResponse.data.text || '';
+        console.log(`[avatar-service] Whisper transcription success: "${transcript}"`);
         try { fs.unlinkSync(tempPath); } catch (e) { /* ignore */ }
       } catch (err: any) {
-        console.error('Whisper transcription failed, using mock:', err.message);
-        transcript = "Sample response about key technical achievements and React application design.";
+        console.error('[avatar-service] Whisper transcription failed:', err.message);
       }
-    } else {
-      transcript = "Sample response about key technical achievements and React application design.";
     }
 
-    res.json({ transcript });
+    // Honest failure — do NOT fabricate an answer. If transcription genuinely
+    // failed, return an empty transcript with a flag so the server/UI can reflect
+    // that no answer was captured instead of scoring a fake response.
+    const normalized = transcript.trim();
+    if (!normalized || normalized.toLowerCase() === 'no response recorded.') {
+      console.warn('[avatar-service] Transcription produced no usable text.');
+      res.json({ transcript: '', transcriptionFailed: true });
+      return;
+    }
+
+    res.json({ transcript: normalized, transcriptionFailed: false });
   } catch (err: any) {
     res.status(504).json({ error: err.message || 'Gateway Timeout waiting for voice response' });
   }
@@ -286,6 +411,7 @@ app.post('/avatar/session/end', (req: Request, res: Response) => {
   if (sessionId) {
     sessions.delete(sessionId);
     listenResolvers.delete(sessionId);
+    pendingResponses.delete(sessionId);
   }
   res.json({ status: 'ended' });
 });
@@ -318,11 +444,15 @@ app.post('/avatar/session/:sessionId/respond', (req: Request, res: Response) => 
   }
   const resolver = listenResolvers.get(sessionId);
   if (resolver) {
+    // A /avatar/listen call is already waiting — hand the audio over directly.
     resolver(audio);
     listenResolvers.delete(sessionId);
     res.json({ status: 'received' });
   } else {
-    res.status(400).json({ error: 'No active listen request for this session' });
+    // The listen request hasn't started yet (client posts audio before /answer
+    // triggers /avatar/listen). Buffer it so /avatar/listen can pick it up.
+    pendingResponses.set(sessionId, audio);
+    res.json({ status: 'buffered' });
   }
 });
 

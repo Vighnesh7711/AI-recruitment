@@ -67,7 +67,7 @@ router.post(
         throw new AppError('Job posting not found.', 404, 'NOT_FOUND');
       }
 
-      if (job.hrId.toString() !== hr._id.toString()) {
+      if (!job.companyId || !hr.companyId || job.companyId.toString() !== hr.companyId.toString()) {
         throw new AppError(
           'You do not have permission to schedule interviews for this application.',
           403,
@@ -201,7 +201,7 @@ router.patch(
       }
 
       // Check HR ownership
-      if (job.hrId.toString() !== hr._id.toString()) {
+      if (!job.companyId || !hr.companyId || job.companyId.toString() !== hr.companyId.toString()) {
         throw new AppError(
           'You do not have permission to reschedule this interview.',
           403,
@@ -403,7 +403,10 @@ router.get(
       // Check access permission
       const isCandidate = candidate.userId.toString() === req.user!._id.toString();
       const hr = await Hr.findOne({ userId: req.user!._id });
-      const isInvitingHr = hr && job.hrId.toString() === hr._id.toString();
+      const jobCompanyId = (job.companyId && (job.companyId as any)._id)
+        ? (job.companyId as any)._id.toString()
+        : (job.companyId as any)?.toString();
+      const isInvitingHr = hr && jobCompanyId && hr.companyId && jobCompanyId === (hr.companyId as any).toString();
 
       if (!isCandidate && !isInvitingHr) {
         throw new AppError('You do not have permission to view this interview.', 403, 'FORBIDDEN');
@@ -485,7 +488,10 @@ router.get(
 
         const isCandidate = candidate.userId.toString() === req.user!._id.toString();
         const hr = await Hr.findOne({ userId: req.user!._id });
-        const isInvitingHr = hr && job.hrId.toString() === hr._id.toString();
+        const jobCompanyId = (job.companyId && (job.companyId as any)._id)
+          ? (job.companyId as any)._id.toString()
+          : (job.companyId as any)?.toString();
+        const isInvitingHr = hr && jobCompanyId && hr.companyId && jobCompanyId === (hr.companyId as any).toString();
 
         if (isCandidate || isInvitingHr) {
           const responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId');
@@ -690,34 +696,52 @@ router.post(
           throw new AppError('Associated job posting not found.', 404, 'NOT_FOUND');
         }
         const generated = await generateQuestions(job);
-        responses = [];
-        for (let idx = 0; idx < generated.length; idx++) {
-          const q = generated[idx];
-          const qBank = await QuestionBank.create({
-            domain: job.domain,
-            difficulty: 'medium',
-            question: q.text,
-            expectedAnswer: `Expected concepts: ${q.category}`,
-            keywords: [q.category],
-          });
-          const qResp = await QuestionResponse.create({
-            interviewId: interview._id,
-            questionId: qBank._id,
-            questionOrder: idx + 1,
-          });
-          (qResp as any).questionId = qBank; // simulate populate
-          responses.push(qResp);
+        
+        // Double check after generating to avoid race condition under concurrent calls (e.g. Strict Mode)
+        const checkAgain = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId').sort({ questionOrder: 1 });
+        if (checkAgain.length > 0) {
+          responses = checkAgain;
+        } else {
+          responses = [];
+          for (let idx = 0; idx < generated.length; idx++) {
+            const q = generated[idx];
+            try {
+              const qBank = await QuestionBank.create({
+                domain: job.domain,
+                difficulty: 'medium',
+                question: q.text,
+                expectedAnswer: `Expected concepts: ${q.category}`,
+                keywords: [q.category],
+              });
+              const qResp = await QuestionResponse.create({
+                interviewId: interview._id,
+                questionId: qBank._id,
+                questionOrder: idx + 1,
+              });
+              (qResp as any).questionId = qBank; // simulate populate
+              responses.push(qResp);
+            } catch (err: any) {
+              if (err.code === 11000) {
+                logger.info(`[Interview] Duplicate question response index detected. Falling back to existing responses.`);
+                responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId').sort({ questionOrder: 1 });
+                break;
+              }
+              throw err;
+            }
+          }
         }
       }
 
-      // Call avatar-service to start session
+      // Call avatar-service to start session (optional — falls back to text-mode)
       const avatarServiceUrl = process.env.AVATAR_SERVICE_URL || 'http://localhost:5002';
-      let sessionId = '';
+      let sessionId = `text_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      let mode: 'avatar' | 'text' = 'text';
       try {
         const sessionRes = await axios.post(`${avatarServiceUrl}/avatar/session/start`, {
           interviewId: interview._id.toString(),
-        });
+        }, { timeout: 3000 });
         sessionId = sessionRes.data.sessionId;
+        mode = 'avatar';
 
         // Trigger avatar to speak the first question
         const firstQuestionBank: any = responses[0].questionId;
@@ -725,10 +749,10 @@ router.post(
         await axios.post(`${avatarServiceUrl}/avatar/ask`, {
           sessionId,
           questionText: firstQuestion,
-        });
+        }, { timeout: 3000 });
       } catch (err: any) {
-        logger.error(`[Interview] Failed to communicate with avatar-service: ${err.message}`);
-        throw new AppError('Failed to initialize avatar session.', 502, 'AVATAR_SERVICE_ERROR');
+        logger.warn(`[Interview] Avatar-service unavailable, falling back to text-mode: ${err.message}`);
+        mode = 'text';
       }
 
       const questionsList = responses.map((resp) => {
@@ -743,8 +767,9 @@ router.post(
       });
 
       res.json({
-        message: 'Avatar interview session started successfully.',
+        message: 'Interview session started successfully.',
         sessionId,
+        mode,
         questions: questionsList,
         firstQuestion: questionsList[0].text,
       });
@@ -764,7 +789,7 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const { sessionId, questionId } = req.body;
+      const { sessionId, questionId, textAnswer } = req.body;
 
       if (!sessionId || !questionId) {
         throw new AppError('sessionId and questionId are required.', 400, 'VALIDATION_ERROR');
@@ -790,15 +815,35 @@ router.post(
         throw new AppError('Question not found in this interview.', 400, 'NOT_FOUND');
       }
 
-      // 1. Call avatar-service listen endpoint
+      // 1. Get transcript — text-mode uses textAnswer directly, avatar-mode calls avatar-service
       const avatarServiceUrl = process.env.AVATAR_SERVICE_URL || 'http://localhost:5002';
       let transcript = '';
-      try {
-        const listenRes = await axios.post(`${avatarServiceUrl}/avatar/listen`, { sessionId });
-        transcript = listenRes.data.transcript;
-      } catch (err: any) {
-        logger.error(`[Interview] Failed to get transcription from avatar-service: ${err.message}`);
-        throw new AppError('Failed to retrieve transcription from voice response.', 502, 'AVATAR_SERVICE_ERROR');
+      let transcriptionFailed = false;
+      if (textAnswer && typeof textAnswer === 'string' && textAnswer.trim().length > 0) {
+        // Text-mode: candidate typed their answer directly
+        transcript = textAnswer.trim();
+      } else {
+        // Avatar-mode: try to get transcription from avatar-service
+        try {
+          const listenRes = await axios.post(`${avatarServiceUrl}/avatar/listen`, { sessionId }, { timeout: 60000 });
+          transcript = (listenRes.data.transcript || '').trim();
+          transcriptionFailed = Boolean(listenRes.data.transcriptionFailed) || transcript.length === 0;
+        } catch (err: any) {
+          logger.warn(`[Interview] Avatar listen failed: ${err.message}. No transcript captured.`);
+          transcript = '';
+          transcriptionFailed = true;
+        }
+      }
+
+      // If voice transcription failed, do not fabricate an answer or score. Ask the
+      // candidate to retry (or switch to text mode) instead of silently recording
+      // an empty/AI-scored response.
+      if (transcriptionFailed) {
+        throw new AppError(
+          'We could not hear your answer clearly. Please try recording again, or switch to text mode.',
+          422,
+          'TRANSCRIPTION_FAILED'
+        );
       }
 
       // Save transcript
@@ -958,8 +1003,41 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
 
         // Update interview status to evaluated/completed via results
         interview.overallScore = overallInterviewScore;
-        interview.result = recommendation.includes('no_hire') ? 'rejected' : 'selected';
+        const isRejected = recommendation.includes('no_hire');
+        interview.result = isRejected ? 'rejected' : 'selected';
         await interview.save();
+
+        // Update application status
+        application.status = isRejected ? 'rejected' : 'interviewed';
+        if (isRejected) {
+          application.rejectionReason = `Rejected based on interview evaluation. Feedback: ${feedback}`;
+        }
+        await application.save();
+
+        // Fire N8N_WEBHOOK_RESUME_REJECTED if rejected
+        if (isRejected) {
+          const rejectWebhookUrl = process.env.N8N_WEBHOOK_RESUME_REJECTED;
+          if (rejectWebhookUrl) {
+            try {
+              const candidateUser = await User.findById(candidate.userId);
+              await axios.post(
+                rejectWebhookUrl,
+                {
+                  candidateId: candidate._id.toString(),
+                  candidateEmail: candidateUser?.email || '',
+                  candidateName: candidate.name,
+                  applicationId: application._id.toString(),
+                  atsScore: atsScore,
+                  rejectionReason: `Rejected based on interview evaluation. Feedback: ${feedback}`,
+                },
+                { timeout: 5000 }
+              );
+              logger.info(`[Interview] N8N interview rejection webhook fired for application ${application._id}`);
+            } catch (webhookErr: any) {
+              logger.warn(`[Interview] N8N interview rejection webhook failed to fire: ${webhookErr.message}`);
+            }
+          }
+        }
 
         // Fire N8N_WEBHOOK_INTERVIEW_COMPLETE
         const completeWebhookUrl = process.env.N8N_WEBHOOK_INTERVIEW_COMPLETE;
