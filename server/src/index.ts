@@ -84,9 +84,12 @@ app.get('/api', (_req, res) => {
     endpoints: {
       health: '/health',
       auth: '/api/auth/*',
+      company: '/api/company/*',
       jobs: '/api/jobs/*',
-      applications: '/api/applications/*',
-      interviews: '/api/interviews/*',
+      resume: '/api/resume/*',
+      application: '/api/application/*',
+      interview: '/api/interview/*',
+      profile: '/api/profile/*',
     },
   });
 });
