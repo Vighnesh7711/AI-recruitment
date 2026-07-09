@@ -4,6 +4,12 @@ AuraRecruit is a premium, enterprise-grade AI recruitment automation platform. I
 
 The entire visual system has been upgraded to the premium **Tomorro Design System**, featuring high-contrast interactive elements, soft organic canvases, and beautiful layered card aesthetics.
 
+### 🖥️ Platform Previews
+<p align="center">
+  <img src="./docs/screenshots/dashboard_mockup.png" width="48%" alt="HR Recruitment Dashboard" />
+  <img src="./docs/screenshots/talking_avatar_mockup.png" width="48%" alt="3D Talking Avatar Interview" />
+</p>
+
 ---
 
 ## 🎨 Tomorro Design System & Premium Aesthetics
