@@ -99,29 +99,35 @@ router.post(
         throw new AppError('Invalid schedule date format.', 400, 'VALIDATION_ERROR');
       }
 
-      // 4. Create Interview
-      const interview = await Interview.create({
-        applicationId: application._id,
-        schedule: scheduleDate,
-        durationMinutes: Number(durationMinutes),
-        meetingLink: `https://meet.jit.si/AI-Recruitment-${application._id}`,
-        reminderSent: false,
-        result: 'pending',
-      });
+      // 4. Create or Update Interview
+      const interview = await Interview.findOneAndUpdate(
+        { applicationId: application._id },
+        {
+          schedule: scheduleDate,
+          durationMinutes: Number(durationMinutes),
+          meetingLink: `https://meet.jit.si/AI-Recruitment-${application._id}`,
+          reminderSent: false,
+          result: 'pending',
+        },
+        { new: true, upsert: true }
+      );
 
       // 5. Update Application status
       application.status = 'interview_scheduled';
       await application.save();
 
-      // 6. Create Interview Reminder (scheduledTime = schedule - 24 hours)
+      // 6. Create or Update Interview Reminder (scheduledTime = schedule - 24 hours)
       const reminderTime = new Date(scheduleDate.getTime() - 24 * 60 * 60 * 1000);
-      await InterviewReminder.create({
-        interviewId: interview._id,
-        scheduledTime: reminderTime,
-        emailSent: false,
-        whatsappSent: false,
-        smsSent: false,
-      });
+      await InterviewReminder.findOneAndUpdate(
+        { interviewId: interview._id },
+        {
+          scheduledTime: reminderTime,
+          emailSent: false,
+          whatsappSent: false,
+          smsSent: false,
+        },
+        { new: true, upsert: true }
+      );
 
       // 7. Fire N8N_WEBHOOK_INTERVIEW_SCHEDULED
       const webhookUrl = process.env.N8N_WEBHOOK_INTERVIEW_SCHEDULED;

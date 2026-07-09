@@ -232,21 +232,24 @@ router.post(
       const experienceScore = Math.max(50, Math.min(98, Math.round(ats * 0.95)));
       const educationScore = Math.max(60, Math.min(95, Math.round(ats * 0.9)));
 
-      // 7. Create ResumeAnalysis document
-      const analysis = await ResumeAnalysis.create({
-        resumeId: resume._id,
-        applicationId: application?._id,
-        atsScore: ats,
-        grammarScore,
-        skillMatch,
-        experienceScore,
-        educationScore,
-        matchedSkills: analyzeResult.matched_skills,
-        missingSkills: analyzeResult.missing_skills,
-        strengths: analyzeResult.strengths,
-        weaknesses: analyzeResult.weaknesses,
-        recommendations: analyzeResult.recommendations,
-      });
+      // 7. Create or update ResumeAnalysis document (using upsert to avoid duplicate key error)
+      const analysis = await ResumeAnalysis.findOneAndUpdate(
+        { resumeId: resume._id },
+        {
+          applicationId: application?._id,
+          atsScore: ats,
+          grammarScore,
+          skillMatch,
+          experienceScore,
+          educationScore,
+          matchedSkills: analyzeResult.matched_skills,
+          missingSkills: analyzeResult.missing_skills,
+          strengths: analyzeResult.strengths,
+          weaknesses: analyzeResult.weaknesses,
+          recommendations: analyzeResult.recommendations,
+        },
+        { new: true, upsert: true }
+      );
 
       // 8. Denormalize atsScore and breakdowns onto the resume document
       resume.atsScore = ats;
