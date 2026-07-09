@@ -23,7 +23,7 @@ api.interceptors.request.use((config) => {
 export interface UserPayload {
   id: string;
   email: string;
-  role: 'admin' | 'hr' | 'candidate';
+  role: 'hr' | 'candidate';
 }
 
 export function saveSession(token: string, user: UserPayload) {
