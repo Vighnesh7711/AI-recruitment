@@ -236,7 +236,8 @@ export function CandidateApplications() {
             <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-white mb-1">No Applications</h3>
             <p className="text-slate-400 text-sm max-w-xs mx-auto mb-6">
-              You haven&apos;t applied to any job postings yet. Find open positions on the job board.
+              You haven&apos;t applied to any job postings yet. Find open positions on the job
+              board.
             </p>
           </div>
         ) : (
@@ -368,14 +369,20 @@ export function CandidateApplications() {
       {(recruiter || loadingRecruiter) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
-          onClick={() => { setRecruiter(null); setLoadingRecruiter(false); }}
+          onClick={() => {
+            setRecruiter(null);
+            setLoadingRecruiter(false);
+          }}
         >
           <div
             className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => { setRecruiter(null); setLoadingRecruiter(false); }}
+              onClick={() => {
+                setRecruiter(null);
+                setLoadingRecruiter(false);
+              }}
               className="absolute top-5 right-5 text-slate-400 hover:text-white text-sm font-semibold border border-slate-800 rounded-lg px-2.5 py-1 hover:bg-slate-800"
             >
               ✕

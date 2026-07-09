@@ -34,4 +34,8 @@ const ActivityLogSchema = new Schema<IActivityLog>(
 // TTL index: auto-delete logs older than 90 days
 ActivityLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
-export const ActivityLog = mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema, 'activity_logs');
+export const ActivityLog = mongoose.model<IActivityLog>(
+  'ActivityLog',
+  ActivityLogSchema,
+  'activity_logs'
+);

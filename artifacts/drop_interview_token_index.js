@@ -15,17 +15,17 @@ async function run() {
   try {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
-    
+
     const db = mongoose.connection.db;
     const collections = await db.listCollections().toArray();
-    const hasInterviews = collections.some(col => col.name === 'interviews');
-    
+    const hasInterviews = collections.some((col) => col.name === 'interviews');
+
     if (hasInterviews) {
       console.log('Interviews collection found. Listing indexes...');
       const indexes = await db.collection('interviews').indexes();
       console.log('Current indexes:', indexes);
-      
-      const hasTokenIndex = indexes.some(idx => idx.name === 'token_1');
+
+      const hasTokenIndex = indexes.some((idx) => idx.name === 'token_1');
       if (hasTokenIndex) {
         console.log('Dropping index token_1...');
         await db.collection('interviews').dropIndex('token_1');

@@ -12,7 +12,10 @@ async function check() {
     console.log('Connected to MongoDB');
 
     const collections = await mongoose.connection.db.listCollections().toArray();
-    console.log('Collections:', collections.map(c => c.name));
+    console.log(
+      'Collections:',
+      collections.map((c) => c.name)
+    );
 
     // Get last interview
     const interviewCol = mongoose.connection.db.collection('interviews');
@@ -21,10 +24,15 @@ async function check() {
 
     if (lastInterview) {
       const qRespCol = mongoose.connection.db.collection('question_responses');
-      const qResps = await qRespCol.find({ interviewId: lastInterview._id }).sort({ questionOrder: 1 }).toArray();
+      const qResps = await qRespCol
+        .find({ interviewId: lastInterview._id })
+        .sort({ questionOrder: 1 })
+        .toArray();
       console.log(`Found ${qResps.length} question responses for interview ${lastInterview._id}:`);
-      qResps.forEach(qr => {
-        console.log(`  Q${qr.questionOrder}: id=${qr._id}, questionId=${qr.questionId}, answer="${qr.answer}", score=${qr.aiScore}`);
+      qResps.forEach((qr) => {
+        console.log(
+          `  Q${qr.questionOrder}: id=${qr._id}, questionId=${qr.questionId}, answer="${qr.answer}", score=${qr.aiScore}`
+        );
       });
     }
 

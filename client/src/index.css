@@ -1,18 +1,641 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════
+   TOMORRO DESIGN SYSTEM — Global Theme Override Layer
+   Remaps the old dark-slate/indigo palette to DESIGN.md
+   forest-green / lime-accent / warm-white tokens.
+   ═══════════════════════════════════════════════════════ */
+
 :root {
+  /* ── Brand Colors ── */
+  --color-lime: #c8f24c;
+  --color-lime-light: #e4ffa8;
+  --color-ink: #12261c;
+  --color-body: #4f5f54;
+  --color-body-strong: #2b3d33;
+  --color-muted: #8a9a8e;
+  --color-hairline: rgba(18, 38, 28, 0.12);
+  --color-hairline-strong: rgba(18, 38, 28, 0.22);
+  --color-canvas: #ffffff;
+  --color-surface-soft: #eef8df;
+  --color-surface-elevated: #dff2c4;
+  --color-dark-green: #1b3b2c;
+  --color-dark-green-deep: #12281e;
+  --color-cream: #faf8f0;
+  --color-warning: #f4a13a;
+  --color-success: #3fa34d;
+
+  /* ── Radii ── */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 32px;
+  --radius-full: 9999px;
+
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--color-canvas);
+  color: var(--color-body);
+}
+
+/* ── Display Font ── */
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TYPOGRAPHY TOKENS
+   ═══════════════════════════════════════════════════════ */
+.text-display-xl {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 56px; font-weight: 800; line-height: 1.05; letter-spacing: -0.5px;
+}
+.text-display-lg {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 40px; font-weight: 800; line-height: 1.1; letter-spacing: -0.5px;
+}
+.text-display-md {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 32px; font-weight: 800; line-height: 1.15;
+}
+.text-display-sm {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 24px; font-weight: 700; line-height: 1.2;
+}
+.text-title-lg {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 20px; font-weight: 700; line-height: 1.3;
+}
+.text-title-md {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px; font-weight: 600; line-height: 1.4;
+}
+.text-label-uppercase {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px; font-weight: 700; line-height: 1.3; letter-spacing: 1px; text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BUTTON TOKENS
+   ═══════════════════════════════════════════════════════ */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background-color: var(--color-dark-green); color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; line-height: 1;
+  border: none; border-radius: var(--radius-full); padding: 14px 28px; height: 48px;
+  cursor: pointer; transition: background-color 0.2s, transform 0.15s;
+}
+.btn-primary:hover { background-color: #244d3a; transform: translateY(-1px); }
+
+.btn-accent {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background-color: var(--color-lime); color: var(--color-ink);
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; line-height: 1;
+  border: none; border-radius: var(--radius-full); padding: 14px 28px; height: 48px;
+  cursor: pointer; transition: background-color 0.2s, transform 0.15s;
+}
+.btn-accent:hover { background-color: #b5dd40; transform: translateY(-1px); }
+
+.btn-outline {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background-color: transparent; color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; line-height: 1;
+  border: 1.5px solid rgba(255,255,255,0.3); border-radius: var(--radius-full);
+  padding: 14px 28px; height: 48px;
+  cursor: pointer; transition: border-color 0.2s, background-color 0.2s;
+}
+.btn-outline:hover { border-color: rgba(255,255,255,0.6); background-color: rgba(255,255,255,0.05); }
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL COLOR REMAPS — Backgrounds
+   Dark slate backgrounds → light/warm surfaces
+   ═══════════════════════════════════════════════════════ */
+
+/* Main page backgrounds: slate-950 → white canvas */
+.bg-slate-950 { background-color: var(--color-canvas) !important; }
+
+/* Remap slate-950 opacity variants to clean white cards/panels */
+.bg-slate-950\/10,
+.bg-slate-950\/20,
+.bg-slate-950\/30 { background-color: #ffffff !important; }
+
+/* Card/panel backgrounds: slate-900 variants → soft/elevated surfaces */
+.bg-slate-900\/40,
+.bg-slate-900\/30,
+.bg-slate-900\/20,
+.bg-slate-900\/10 { background-color: var(--color-surface-soft) !important; }
+.bg-slate-900 { background-color: var(--color-surface-soft) !important; }
+
+/* Table/header backgrounds */
+.bg-slate-950\/80 { background-color: var(--color-dark-green) !important; color: #fff !important; }
+.bg-slate-950\/60 { background-color: rgba(27,59,44,0.04) !important; }
+
+/* Dark overlay panels */
+.bg-slate-800\/10,
+.bg-slate-800\/80 { background-color: var(--color-surface-elevated) !important; }
+.bg-slate-800 { background-color: var(--color-surface-elevated) !important; }
+
+/* Indigo/purple gradient buttons → dark-green solid */
+.bg-gradient-to-r.from-indigo-500.to-purple-600,
+.from-indigo-500 {
+  background: var(--color-dark-green) !important;
+  --tw-gradient-from: var(--color-dark-green) !important;
+  --tw-gradient-to: #244d3a !important;
+}
+.hover\:from-indigo-600:hover { --tw-gradient-from: #244d3a !important; }
+.hover\:to-purple-700:hover { --tw-gradient-to: #1b3b2c !important; }
+
+/* Indigo solid backgrounds → dark-green */
+.bg-indigo-500 { background-color: var(--color-dark-green) !important; }
+.bg-indigo-600,
+.hover\:bg-indigo-600:hover { background-color: #244d3a !important; }
+.bg-indigo-500\/10,
+.bg-indigo-500\/20 { background-color: rgba(200,242,76,0.1) !important; }
+
+/* Accent chips and badges: indigo tints → lime tints */
+.bg-indigo-500\/5 { background-color: rgba(200,242,76,0.05) !important; }
+
+/* Purple tints → muted green */
+.bg-purple-500\/10,
+.bg-purple-500\/5 { background-color: rgba(27,59,44,0.05) !important; }
+
+/* White/light backgrounds for buttons on dark theme */
+.hover\:bg-white:hover { background-color: var(--color-lime) !important; }
+.hover\:text-slate-950:hover { color: var(--color-ink) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL COLOR REMAPS — Borders
+   ═══════════════════════════════════════════════════════ */
+.border-slate-900,
+.border-slate-900\/80,
+.border-slate-900\/50,
+.border-slate-850,
+.border-slate-850\/80,
+.border-slate-800,
+.border-slate-800\/80,
+.border-slate-800\/50,
+.border-slate-800\/60 { border-color: var(--color-hairline) !important; }
+.border-slate-700,
+.border-slate-700\/80 { border-color: var(--color-hairline-strong) !important; }
+.divide-slate-800 > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-hairline) !important; }
+
+/* Indigo borders → lime accent borders */
+.border-indigo-500\/20,
+.border-indigo-500\/30,
+.border-indigo-500\/40 { border-color: rgba(200,242,76,0.3) !important; }
+.hover\:border-indigo-500:hover,
+.hover\:border-indigo-500\/40:hover,
+.focus\:border-indigo-500:focus { border-color: var(--color-lime) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL COLOR REMAPS — Text Colors
+   ═══════════════════════════════════════════════════════ */
+
+/* White text on dark backgrounds needs context — headings and table text */
+.text-white { color: var(--color-ink) !important; }
+
+/* Exception list: force real white text on dark green backgrounds */
+.bg-slate-950\/80 .text-white,
+[style*="background-color: #1b3b2c"] .text-white,
+[style*="backgroundColor"] .text-white,
+nav .text-white,
+nav [style],
+.btn-primary,
+.bg-indigo-500,
+.bg-indigo-600,
+.from-indigo-500,
+.bg-gradient-to-r.from-indigo-500,
+button[type="submit"] {
+  color: #ffffff !important;
+}
+
+.bg-slate-950\/80 .text-white *,
+[style*="background-color: #1b3b2c"] .text-white *,
+nav .text-white *,
+.btn-primary *,
+.bg-indigo-500 *,
+.bg-indigo-600 *,
+.from-indigo-500 *,
+.bg-gradient-to-r.from-indigo-500 *,
+button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Ensure SVG icons inside dark buttons/steppers are white */
+.bg-indigo-500 svg,
+.bg-indigo-600 svg,
+.from-indigo-500 svg,
+.btn-primary svg,
+button[type="submit"] svg {
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* Exclude soft background/opacity classes from white text rule */
+.bg-indigo-500\/10,
+.bg-indigo-500\/20,
+.bg-indigo-500\/5,
+[class*="bg-indigo-500/"] {
+  color: var(--color-dark-green) !important;
+}
+.bg-indigo-500\/10 *,
+.bg-indigo-500\/20 *,
+.bg-indigo-500\/5 *,
+[class*="bg-indigo-500/"] * {
+  color: var(--color-dark-green) !important;
+}
+.bg-indigo-500\/10 svg,
+.bg-indigo-500\/20 svg,
+.bg-indigo-500\/5 svg {
+  stroke: var(--color-dark-green) !important;
+  color: var(--color-dark-green) !important;
+}
+
+/* Ensure that elements with hover:text-white show white text and white icons on hover */
+.hover\:text-white:hover {
+  color: #ffffff !important;
+}
+.hover\:text-white:hover * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Ensure that elements turning dark green, dark red, or gradient on hover get white text and white icons */
+.hover\:bg-indigo-500:hover,
+.hover\:bg-indigo-600:hover,
+.hover\:bg-red-500:hover,
+.hover\:bg-red-600:hover,
+.hover\:from-indigo-600:hover,
+.hover\:to-purple-700:hover,
+.hover\:from-indigo-500:hover,
+.hover\:to-purple-650:hover,
+.hover\:bg-slate-800:hover,
+.hover\:bg-slate-700:hover,
+.hover\:bg-slate-900:hover,
+[class*="hover:bg-indigo-"]:hover,
+[class*="hover:bg-red-"]:hover,
+[class*="hover:from-indigo-"]:hover,
+[class*="hover:to-purple-"]:hover,
+button[class*="hover:bg-slate-"]:hover,
+button[class*="hover:bg-indigo-"]:hover,
+button[class*="hover:bg-red-"]:hover,
+button[class*="hover:bg-teal-"]:hover,
+a[class*="hover:bg-slate-"]:hover,
+a[class*="hover:bg-indigo-"]:hover,
+a[class*="hover:bg-red-"]:hover,
+a[class*="hover:bg-teal-"]:hover {
+  color: #ffffff !important;
+}
+.hover\:bg-indigo-500:hover *,
+.hover\:bg-indigo-600:hover *,
+.hover\:bg-red-500:hover *,
+.hover\:bg-red-600:hover *,
+.hover\:from-indigo-600:hover *,
+.hover\:to-purple-700:hover *,
+.hover\:from-indigo-500:hover *,
+.hover\:to-purple-650:hover *,
+.hover\:bg-slate-800:hover *,
+.hover\:bg-slate-700:hover *,
+.hover\:bg-slate-900:hover *,
+[class*="hover:bg-indigo-"]:hover *,
+[class*="hover:bg-red-"]:hover *,
+[class*="hover:from-indigo-"]:hover *,
+[class*="hover:to-purple-"]:hover *,
+button[class*="hover:bg-slate-"]:hover *,
+button[class*="hover:bg-indigo-"]:hover *,
+button[class*="hover:bg-red-"]:hover *,
+button[class*="hover:bg-teal-"]:hover *,
+a[class*="hover:bg-slate-"]:hover *,
+a[class*="hover:bg-indigo-"]:hover *,
+a[class*="hover:bg-red-"]:hover *,
+a[class*="hover:bg-teal-"]:hover * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Explicit background overrides for hovered slate buttons → brand forest green */
+.hover\:bg-slate-800:hover,
+.hover\:bg-slate-700:hover,
+.hover\:bg-slate-900:hover {
+  background-color: var(--color-dark-green) !important;
+}
+
+/* Slate text → body tones */
+.text-slate-400 { color: var(--color-body) !important; }
+.text-slate-500 { color: var(--color-muted) !important; }
+.text-slate-300 { color: var(--color-body-strong) !important; }
+.text-slate-200 { color: var(--color-body-strong) !important; }
+.text-slate-100 { color: var(--color-ink) !important; }
+.text-slate-600 { color: var(--color-muted) !important; }
+.text-slate-700 { color: var(--color-muted) !important; }
+
+/* Indigo accent text → dark-green or lime */
+.text-indigo-400 { color: var(--color-dark-green) !important; }
+.text-indigo-300 { color: #244d3a !important; }
+.text-indigo-600 { color: var(--color-dark-green) !important; }
+.hover\:text-indigo-300:hover { color: #244d3a !important; }
+.hover\:text-indigo-400:hover { color: var(--color-dark-green) !important; }
+
+/* Purple text → dark-green */
+.text-purple-400 { color: var(--color-dark-green) !important; }
+
+/* Gradient text clips → solid dark-green */
+.bg-clip-text.text-transparent {
+  -webkit-text-fill-color: var(--color-ink);
+  color: var(--color-ink) !important;
+  background: none !important;
+}
+
+/* Fix placeholder text */
+.placeholder-slate-500::placeholder { color: var(--color-muted) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL COLOR REMAPS — Shadows
+   Heavy indigo/black shadows → soft green tints
+   ═══════════════════════════════════════════════════════ */
+.shadow-2xl { box-shadow: 0 8px 30px rgba(27,59,44,0.08) !important; }
+.shadow-xl { box-shadow: 0 4px 20px rgba(27,59,44,0.06) !important; }
+.shadow-lg { box-shadow: 0 2px 12px rgba(27,59,44,0.04) !important; }
+.shadow-black\/40 { --tw-shadow-color: rgba(27,59,44,0.08) !important; }
+.shadow-indigo-500\/20,
+.shadow-indigo-500\/25 { --tw-shadow-color: rgba(27,59,44,0.08) !important; }
+.shadow-white\/5 { --tw-shadow-color: rgba(27,59,44,0.04) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL COLOR REMAPS — Rings & Focus
+   ═══════════════════════════════════════════════════════ */
+.focus\:ring-indigo-500\/20:focus,
+.focus\:ring-indigo-500:focus {
+  --tw-ring-color: rgba(200,242,76,0.25) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL COLOR REMAPS — Backdrop Blur & Glows
+   Remove indigo/purple background glows
+   ═══════════════════════════════════════════════════════ */
+.blur-3xl,
+.blur-\[120px\],
+.blur-\[100px\] {
+  display: none !important; /* Remove glow orbs; design uses color-blocking instead */
+}
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL — Spinner/Loading States
+   ═══════════════════════════════════════════════════════ */
+.border-indigo-500\/30 { border-color: var(--color-hairline) !important; }
+.border-t-indigo-500 { border-top-color: var(--color-dark-green) !important; }
+.border-white\/30 { border-color: rgba(255,255,255,0.3) !important; }
+.border-t-white { border-top-color: #fff !important; }
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL — Animate pulse: soften it
+   ═══════════════════════════════════════════════════════ */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ═══════════════════════════════════════════════════════
+   NAVBAR OVERRIDE — Keep dark-green nav text white
+   The Navbar uses inline styles so these are safe.
+   ═══════════════════════════════════════════════════════ */
+nav[class*="sticky"] {
+  /* The Navbar component already applies inline styles.
+     This ensures any residual Tailwind slate classes don't interfere. */
+}
+nav .text-white { color: #ffffff !important; }
+nav .text-slate-300 { color: rgba(255,255,255,0.75) !important; }
+nav .text-slate-200 { color: #ffffff !important; }
+nav .text-slate-400 { color: rgba(255,255,255,0.6) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   TABLE HEADER — Keep dark-green headers with white text
+   ═══════════════════════════════════════════════════════ */
+.bg-slate-950\/80 .text-xs,
+.bg-slate-950\/80 th {
+  color: rgba(255,255,255,0.8) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   STATUS BADGES — Keep green/red semantic colors
+   ═══════════════════════════════════════════════════════ */
+.bg-green-500\/10 { background-color: rgba(63,163,77,0.1) !important; }
+.text-green-400 { color: #3fa34d !important; }
+.border-green-500\/20 { border-color: rgba(63,163,77,0.2) !important; }
+.hover\:bg-green-500\/20:hover { background-color: rgba(63,163,77,0.15) !important; }
+
+.bg-red-500\/10 { background-color: rgba(239,68,68,0.06) !important; }
+.text-red-400 { color: #dc2626 !important; }
+.text-red-200 { color: #dc2626 !important; }
+.text-red-300 { color: #dc2626 !important; }
+.border-red-500\/20 { border-color: rgba(239,68,68,0.15) !important; }
+.hover\:bg-red-500\/20:hover { background-color: rgba(239,68,68,0.1) !important; }
+.hover\:text-red-300:hover { color: #b91c1c !important; }
+.hover\:bg-red-500\/10:hover { background-color: rgba(239,68,68,0.06) !important; }
+.hover\:border-red-500\/20:hover { border-color: rgba(239,68,68,0.15) !important; }
+
+/* Yellow/amber — keep for warnings */
+.bg-yellow-500\/10,
+.bg-amber-500\/10 { background-color: rgba(244,161,58,0.08) !important; }
+.text-yellow-400,
+.text-amber-400 { color: #d97706 !important; } /* Darker amber for high contrast */
+.border-yellow-500\/20,
+.border-amber-500\/20 { border-color: rgba(244,161,58,0.15) !important; }
+
+/* Rose (auto-screen toggles) → warning orange tone */
+.bg-rose-500\/10 { background-color: rgba(244,161,58,0.08) !important; }
+.text-rose-400 { color: #f4a13a !important; }
+.border-rose-500\/30 { border-color: rgba(244,161,58,0.2) !important; }
+.hover\:bg-rose-500\/20:hover { background-color: rgba(244,161,58,0.12) !important; }
+
+/* Blue badges & text → professional dark blue tint for high contrast on light canvas */
+.text-blue-400 { color: #1e3a8a !important; } /* Dark blue */
+.bg-blue-500\/10 { background-color: rgba(30,58,138,0.08) !important; }
+.border-blue-500\/20 { border-color: rgba(30,58,138,0.2) !important; }
+
+/* Emerald — use brand success */
+.text-emerald-400 { color: var(--color-success) !important; }
+.bg-emerald-500\/10 { background-color: rgba(63,163,77,0.08) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   CARDS & PANELS — Rounded corners upgrade
+   ═══════════════════════════════════════════════════════ */
+.rounded-2xl { border-radius: var(--radius-md) !important; }
+.rounded-xl { border-radius: var(--radius-sm) !important; }
+.rounded-lg { border-radius: var(--radius-sm) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   FORM INPUTS — Light theme compatible
+   ═══════════════════════════════════════════════════════ */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="date"],
+textarea,
+select {
+  background-color: var(--color-canvas) !important;
+  border-color: var(--color-hairline) !important;
+  color: var(--color-ink) !important;
+  caret-color: var(--color-dark-green);
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-lime) !important;
+  box-shadow: 0 0 0 3px rgba(200,242,76,0.15) !important;
+  outline: none !important;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-muted) !important;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+  accent-color: var(--color-dark-green);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DARK PANELS WITHIN LIGHT PAGES (e.g. Interview page)
+   These need white text inside them
+   ═══════════════════════════════════════════════════════ */
+[style*="background-color: rgb(27, 59, 44)"] *,
+[style*="background-color: #1b3b2c"] * {
+  /* Keep text white inside dark-green containers */
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-canvas); }
+::-webkit-scrollbar-thumb { background: var(--color-hairline-strong); border-radius: var(--radius-full); }
+
+/* ═══════════════════════════════════════════════════════
+   BACKDROP BLUR — soften on light theme
+   ═══════════════════════════════════════════════════════ */
+.backdrop-blur-xl { backdrop-filter: blur(8px) !important; }
+.backdrop-blur-md { backdrop-filter: blur(4px) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   STEPPER TIMELINE CONTRAST & STYLES
+   ═══════════════════════════════════════════════════════ */
+/* Keep completed & active checkmark SVGs and text fully white and highly visible */
+.w-8.h-8.rounded-full {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.w-8.h-8.rounded-full.bg-indigo-600,
+.w-8.h-8.rounded-full.bg-indigo-500,
+.w-8.h-8.rounded-full.bg-red-600 {
+  background-color: var(--color-dark-green) !important;
+  border-color: var(--color-lime) !important;
+  color: #ffffff !important;
+}
+.w-8.h-8.rounded-full.bg-indigo-600 *,
+.w-8.h-8.rounded-full.bg-indigo-500 *,
+.w-8.h-8.rounded-full.bg-red-600 * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+/* Incomplete steps */
+.w-8.h-8.rounded-full.bg-slate-950 {
+  background-color: #ffffff !important;
+  border-color: var(--color-hairline-strong) !important;
+  color: var(--color-muted) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESUME & LOGO UPLOAD DROPZONES
+   ═══════════════════════════════════════════════════════ */
+/* Fix dark grey background and restore thin, elegant dashed borders */
+[class*="bg-slate-950/40"],
+[class*="bg-slate-950/50"],
+.bg-slate-950\/40,
+.bg-slate-950\/50 {
+  background-color: var(--color-cream) !important;
+}
+.border-dashed.border-2,
+.border-dashed {
+  border-width: 1px !important;
+  border-style: dashed !important;
+  border-color: var(--color-hairline-strong) !important;
+  background-color: var(--color-cream) !important;
+  padding: 32px 16px !important;
+}
+.border-dashed:hover {
+  border-color: var(--color-dark-green) !important;
+}
+.border-dashed *,
+.border-dashed p,
+.border-dashed span {
+  color: var(--color-body-strong) !important;
+}
+.border-dashed label span,
+.border-dashed label a,
+.border-dashed label {
+  color: var(--color-dark-green) !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+.border-dashed label span:hover {
+  color: #244d3a !important;
+}
+.border-dashed svg {
+  color: var(--color-dark-green) !important;
+  stroke: var(--color-dark-green) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TABLES polish under green headers
+   ═══════════════════════════════════════════════════════ */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden !important;
+}
+tbody tr {
+  background-color: #ffffff !important;
+  transition: background-color 0.2s ease !important;
+}
+tbody tr:hover {
+  background-color: var(--color-surface-soft) !important;
+}
+tbody td {
+  border-bottom: 1px solid var(--color-hairline) !important;
+  color: var(--color-body-strong) !important;
+  padding: 16px 24px !important;
+}
+/* Ensure contrast of any elements in tables */
+tbody td * {
+  color: var(--color-ink) !important;
+}
+tbody td .text-slate-500,
+tbody td .text-slate-400 {
+  color: var(--color-muted) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   COMPANY SETUP & GENERAL FORM PAGE FIXES
+   ═══════════════════════════════════════════════════════ */
+.max-w-2xl,
+.max-w-3xl {
+  padding: 8px !important;
 }

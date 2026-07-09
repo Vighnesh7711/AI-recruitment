@@ -11,7 +11,7 @@ async function test() {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     console.log('Sending request to Gemini...');
     const response = await axios.post(url, {
-      contents: [{ parts: [{ text: 'Hello, reply with "API is working"' }] }]
+      contents: [{ parts: [{ text: 'Hello, reply with "API is working"' }] }],
     });
     console.log('Gemini Response:', JSON.stringify(response.data, null, 2));
   } catch (err) {

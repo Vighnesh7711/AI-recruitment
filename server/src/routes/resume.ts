@@ -1,7 +1,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import axios from 'axios';
-import { Resume, ResumeAnalysis, Application, JobPosting, Notification, Candidate, Hr } from '../../../database';
+import {
+  Resume,
+  ResumeAnalysis,
+  Application,
+  JobPosting,
+  Notification,
+  Candidate,
+  Hr,
+} from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { uploadToCloudinary } from '../utils/cloudinary';
 import { AppError } from '../utils/errors';
@@ -127,14 +135,27 @@ router.post(
         throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
       if (!hr.companyId) {
-        throw new AppError('Please complete your company profile before analyzing resumes.', 400, 'COMPANY_REQUIRED');
+        throw new AppError(
+          'Please complete your company profile before analyzing resumes.',
+          400,
+          'COMPANY_REQUIRED'
+        );
       }
 
-      // 2. Find the application linked to this resume
-      const application = await Application.findOne({
-        candidateId: resume.candidateId,
-        resumeId: resume._id,
-      });
+      // 2. Find the application linked to this resume (preferring applicationId if provided to avoid cross-job data corruption)
+      const { applicationId } = req.body;
+      let application = null;
+      if (applicationId) {
+        application = await Application.findById(applicationId);
+        if (application && application.resumeId.toString() !== resume._id.toString()) {
+          throw new AppError('Resume does not match the application.', 400, 'BAD_REQUEST');
+        }
+      } else {
+        application = await Application.findOne({
+          candidateId: resume.candidateId,
+          resumeId: resume._id,
+        });
+      }
 
       // 3. Find the job posting to get description + required skills
       let jobDescription = '';
@@ -145,7 +166,11 @@ router.post(
         const job = await JobPosting.findById(application.jobId);
         if (job) {
           if (job.companyId.toString() !== hr.companyId.toString()) {
-            throw new AppError('You do not have permission to modify this job posting.', 403, 'FORBIDDEN');
+            throw new AppError(
+              'You do not have permission to modify this job posting.',
+              403,
+              'FORBIDDEN'
+            );
           }
           jobObj = job;
           jobDescription = `${job.title}\n${job.description}`;
@@ -216,21 +241,24 @@ router.post(
       const experienceScore = Math.max(50, Math.min(98, Math.round(ats * 0.95)));
       const educationScore = Math.max(60, Math.min(95, Math.round(ats * 0.9)));
 
-      // 7. Create ResumeAnalysis document
-      const analysis = await ResumeAnalysis.create({
-        resumeId: resume._id,
-        applicationId: application?._id,
-        atsScore: ats,
-        grammarScore,
-        skillMatch,
-        experienceScore,
-        educationScore,
-        matchedSkills: analyzeResult.matched_skills,
-        missingSkills: analyzeResult.missing_skills,
-        strengths: analyzeResult.strengths,
-        weaknesses: analyzeResult.weaknesses,
-        recommendations: analyzeResult.recommendations,
-      });
+      // 7. Create or update ResumeAnalysis document (using upsert to avoid duplicate key error)
+      const analysis = await ResumeAnalysis.findOneAndUpdate(
+        { resumeId: resume._id },
+        {
+          applicationId: application?._id,
+          atsScore: ats,
+          grammarScore,
+          skillMatch,
+          experienceScore,
+          educationScore,
+          matchedSkills: analyzeResult.matched_skills,
+          missingSkills: analyzeResult.missing_skills,
+          strengths: analyzeResult.strengths,
+          weaknesses: analyzeResult.weaknesses,
+          recommendations: analyzeResult.recommendations,
+        },
+        { new: true, upsert: true }
+      );
 
       // 8. Denormalize atsScore and breakdowns onto the resume document
       resume.atsScore = ats;
@@ -244,15 +272,19 @@ router.post(
       let atsCutoffScore = 60;
       if (application) {
         const job = await JobPosting.findById(application.jobId);
-        autoScreenEnabled = job?.autoScreenEnabled ?? false;
-        atsCutoffScore = job?.atsCutoffScore ?? 60;
+        autoScreenEnabled = application.autoScreenEnabled !== undefined 
+          ? application.autoScreenEnabled 
+          : (job?.autoScreenEnabled ?? false);
+        atsCutoffScore = application.atsCutoffScore !== undefined 
+          ? application.atsCutoffScore 
+          : (job?.atsCutoffScore ?? 60);
 
         // Denormalize scores onto the core application object for rendering
         application.atsScore = analyzeResult.ats_score;
         application.atsAnalysis = {
           overallScore: analyzeResult.ats_score,
           matchedSkills: analyzeResult.matched_skills,
-          missing_skills: analyzeResult.missing_skills, // Fixed naming mapping mismatch 
+          missingSkills: analyzeResult.missing_skills,
           experienceMatch: 0,
           educationMatch: 0,
           strengths: analyzeResult.strengths,
@@ -282,6 +314,9 @@ router.post(
                       candidateName: candidate.name,
                       applicationId: application._id.toString(),
                       atsScore: analyzeResult.ats_score,
+                      weaknesses: analyzeResult.weaknesses || [],
+                      recommendations: analyzeResult.recommendations || [],
+                      rejectionReason: application.rejectionReason,
                     },
                     { timeout: 5000 }
                   );
@@ -300,7 +335,11 @@ router.post(
 
             const hrUserEmail = req.user!.email;
             const hrUserId = req.user!._id;
-            autoScheduleInterview(application._id.toString(), hrUserId.toString(), hrUserEmail).catch(err => {
+            autoScheduleInterview(
+              application._id.toString(),
+              hrUserId.toString(),
+              hrUserEmail
+            ).catch((err) => {
               logger.error(`[Analyze] Auto-schedule error: ${err.message}`);
             });
           }
@@ -331,7 +370,7 @@ router.post(
         applicationId: application?._id || null,
         atsScore: ats,
         decision: application
-          ? (autoScreenEnabled && ats < atsCutoffScore)
+          ? autoScreenEnabled && ats < atsCutoffScore
             ? 'rejected'
             : 'under_review'
           : 'no_application',
@@ -367,7 +406,9 @@ router.get(
       let authorized = false;
       if (req.user!.role === 'candidate') {
         const candidate = await Candidate.findOne({ userId: req.user!._id });
-        authorized = Boolean(candidate && candidate._id.toString() === resume.candidateId.toString());
+        authorized = Boolean(
+          candidate && candidate._id.toString() === resume.candidateId.toString()
+        );
       } else if (req.user!.role === 'hr') {
         const hr = await Hr.findOne({ userId: req.user!._id });
         if (hr && hr.companyId) {

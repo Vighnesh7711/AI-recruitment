@@ -8,6 +8,18 @@ dist/
 build/
 .next/
 
+# Compiled TypeScript artifacts in source directories
+database/*.d.ts
+database/*.d.ts.map
+database/*.js.map
+server/src/lib/*.d.ts
+server/src/lib/*.d.ts.map
+server/src/lib/*.js
+server/src/lib/*.js.map
+
+# Python cache
+**/__pycache__/
+
 # Environment files
 .env
 .env.local

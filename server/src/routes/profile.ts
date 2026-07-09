@@ -22,7 +22,9 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
-      return cb(new AppError('Only image files are allowed for profile pictures.', 400, 'INVALID_FILE_TYPE'));
+      return cb(
+        new AppError('Only image files are allowed for profile pictures.', 400, 'INVALID_FILE_TYPE')
+      );
     }
     cb(null, true);
   },
@@ -201,11 +203,7 @@ router.get(
         jobId: { $in: companyJobIds },
       });
       if (!linkingApplication) {
-        throw new AppError(
-          'You do not have permission to view this candidate.',
-          403,
-          'FORBIDDEN'
-        );
+        throw new AppError('You do not have permission to view this candidate.', 403, 'FORBIDDEN');
       }
 
       const candidateUser = await User.findById(candidate.userId);

@@ -51,7 +51,7 @@ const listenResolvers = new Map<string, (audioBase64: string) => void>();
 const pendingResponses = new Map<string, string>();
 
 // A short base64 encoded silent 1-second MP3 to use as a fallback audio block.
-const silentMp3Base64 = 
+const silentMp3Base64 =
   'SUQzBAAAAAAAI1RTU0UAAAAPAAADTGFtZTMuMTAwYnVpbGQfAAAAAAAAAAD/lhAAMAAAb0ACAAYAAA//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACAAACAAAAAP/uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACAAACAAAAAP/uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACAAACAAAAAP/uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACAAAAAP/';
 
 // Generate simulated mouth cues for lipsync animation
@@ -62,7 +62,8 @@ function generateSimulatedCues(text: string, durationSeconds: number) {
   let start = 0;
   for (let i = 0; i < cueCount; i++) {
     const end = Number((start + 0.1).toFixed(2));
-    const value = i === cueCount - 1 ? 'X' : mouthShapes[Math.floor(Math.random() * (mouthShapes.length - 1))];
+    const value =
+      i === cueCount - 1 ? 'X' : mouthShapes[Math.floor(Math.random() * (mouthShapes.length - 1))];
     cues.push({ start, end, value });
     start = end;
   }
@@ -91,12 +92,18 @@ async function convertWebmToWav(webmBase64: string, sessionId: string): Promise<
     }
     return null;
   } catch (err: any) {
-    console.warn(`[avatar-service] webm→wav conversion failed, using original audio: ${err.message}`);
+    console.warn(
+      `[avatar-service] webm→wav conversion failed, using original audio: ${err.message}`
+    );
     return null;
   } finally {
     [webmPath, wavPath].forEach((p) => {
       if (fs.existsSync(p)) {
-        try { fs.unlinkSync(p); } catch (e) { /* ignore */ }
+        try {
+          fs.unlinkSync(p);
+        } catch (e) {
+          /* ignore */
+        }
       }
     });
   }
@@ -115,10 +122,10 @@ async function runRhubarbOrSimulate(audioBuffer: Buffer, text: string, duration:
 
   try {
     fs.writeFileSync(mp3Path, audioBuffer);
-    
+
     // Convert to wav using ffmpeg
     await execPromise(`ffmpeg -y -i "${mp3Path}" "${wavPath}"`);
-    
+
     // Check if rhubarb binary exists in vendor repo's bin or is globally available
     const binPath = path.resolve(
       process.cwd(),
@@ -139,7 +146,11 @@ async function runRhubarbOrSimulate(audioBuffer: Buffer, text: string, duration:
     // clean up files
     [mp3Path, wavPath, jsonPath].forEach((p) => {
       if (fs.existsSync(p)) {
-        try { fs.unlinkSync(p); } catch (e) { /* ignore */ }
+        try {
+          fs.unlinkSync(p);
+        } catch (e) {
+          /* ignore */
+        }
       }
     });
   }
@@ -309,7 +320,9 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
 
       for (let i = 0; i < retries; i++) {
         try {
-          console.log(`[avatar-service] Transcribing audio for session ${sessionId} using Gemini 2.5 Flash (Attempt ${i + 1}/${retries})...`);
+          console.log(
+            `[avatar-service] Transcribing audio for session ${sessionId} using Gemini 2.5 Flash (Attempt ${i + 1}/${retries})...`
+          );
           const response = await axios.post(
             url,
             {
@@ -346,7 +359,10 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
             await new Promise((resolve) => setTimeout(resolve, delay));
             delay *= 2;
           } else {
-            console.error('[avatar-service] Gemini transcription failed:', err.response?.data || err.message);
+            console.error(
+              '[avatar-service] Gemini transcription failed:',
+              err.response?.data || err.message
+            );
             break;
           }
         }
@@ -356,7 +372,9 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
     // Fallback to Whisper if Gemini failed or wasn't configured
     if (!transcript && openAiKey && openAiKey !== '-') {
       try {
-        console.log(`[avatar-service] Transcribing audio for session ${sessionId} using Whisper...`);
+        console.log(
+          `[avatar-service] Transcribing audio for session ${sessionId} using Whisper...`
+        );
         const audioBuffer = Buffer.from(audioBase64, 'base64');
         const tempDir = path.join(process.cwd(), 'tmp');
         if (!fs.existsSync(tempDir)) {
@@ -383,7 +401,11 @@ app.post('/avatar/listen', async (req: Request, res: Response) => {
 
         transcript = whisperResponse.data.text || '';
         console.log(`[avatar-service] Whisper transcription success: "${transcript}"`);
-        try { fs.unlinkSync(tempPath); } catch (e) { /* ignore */ }
+        try {
+          fs.unlinkSync(tempPath);
+        } catch (e) {
+          /* ignore */
+        }
       } catch (err: any) {
         console.error('[avatar-service] Whisper transcription failed:', err.message);
       }

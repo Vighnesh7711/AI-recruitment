@@ -19,7 +19,7 @@ export interface IApplication extends Document {
   atsAnalysis?: {
     overallScore: number;
     matchedSkills: string[];
-    missing_skills: string[];
+    missingSkills: string[];
     experienceMatch: number;
     educationMatch: number;
     strengths: string[];
@@ -27,6 +27,8 @@ export interface IApplication extends Document {
     recommendations: string[];
   };
   rejectionReason?: string;
+  autoScreenEnabled?: boolean;
+  atsCutoffScore?: number;
 }
 
 const ApplicationSchema = new Schema<IApplication>(
@@ -76,7 +78,7 @@ const ApplicationSchema = new Schema<IApplication>(
     atsAnalysis: {
       overallScore: Number,
       matchedSkills: [String],
-      missing_skills: [String],
+      missingSkills: [String],
       experienceMatch: Number,
       educationMatch: Number,
       strengths: [String],
@@ -85,6 +87,12 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     rejectionReason: {
       type: String,
+    },
+    autoScreenEnabled: {
+      type: Boolean,
+    },
+    atsCutoffScore: {
+      type: Number,
     },
   },
   {
@@ -95,5 +103,8 @@ const ApplicationSchema = new Schema<IApplication>(
 // Compound unique index on (candidateId, jobId)
 ApplicationSchema.index({ candidateId: 1, jobId: 1 }, { unique: true });
 
-export const Application = mongoose.model<IApplication>('Application', ApplicationSchema, 'applications');
-
+export const Application = mongoose.model<IApplication>(
+  'Application',
+  ApplicationSchema,
+  'applications'
+);

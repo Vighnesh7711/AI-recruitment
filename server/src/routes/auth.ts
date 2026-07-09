@@ -14,7 +14,7 @@ const BCRYPT_SALT_ROUNDS = 10;
 // ── Rate Limiter for Registration and Login ──
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 requests per 15 minutes per IP
+  max: 1000, // 1000 requests per 15 minutes per IP
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, _res, next) => {
@@ -49,35 +49,56 @@ router.post(
 
       // Check if user already exists
       const existingUser = await User.findOne({ email });
+      let user;
+
       if (existingUser) {
-        throw new AppError('Email is already registered.', 400, 'USER_EXISTS');
+        if (existingUser.isVerified) {
+          throw new AppError('Email is already registered.', 400, 'USER_EXISTS');
+        }
+
+        // Allow overwriting unverified account
+        const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        existingUser.passwordHash = passwordHash;
+        existingUser.verificationToken = verificationToken;
+        existingUser.verificationTokenExpiry = verificationTokenExpiry;
+        user = await existingUser.save();
+
+        await Hr.findOneAndUpdate(
+          { userId: user._id },
+          { name, designation, companyId: companyId || undefined },
+          { upsert: true }
+        );
+      } else {
+        // Hash password
+        const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
+        // Verification token
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        // Create User
+        user = await User.create({
+          email,
+          passwordHash,
+          role: 'hr',
+          isVerified: false,
+          verificationToken,
+          verificationTokenExpiry,
+        });
+
+        // Create Hr profile
+        await Hr.create({
+          userId: user._id,
+          companyId: companyId || undefined,
+          name,
+          designation,
+        });
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-
-      // Verification token
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-      // Create User
-      const user = await User.create({
-        email,
-        passwordHash,
-        role: 'hr',
-        isVerified: false,
-        verificationToken,
-        verificationTokenExpiry,
-      });
-
-      // Create Hr profile
-      await Hr.create({
-        userId: user._id,
-        companyId: companyId || undefined,
-        name,
-        designation,
-      });
-
+      const verificationToken = user.verificationToken!;
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
       const verifyLink = `${clientUrl}/verify-email?token=${verificationToken}`;
 
@@ -102,7 +123,9 @@ router.post(
         }
       }
 
-      logger.info(`\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`);
+      logger.info(
+        `\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`
+      );
 
       res.status(201).json({
         userId: user._id,
@@ -134,32 +157,53 @@ router.post(
       }
 
       const existingUser = await User.findOne({ email });
+      let user;
+
       if (existingUser) {
-        throw new AppError('Email is already registered.', 400, 'USER_EXISTS');
+        if (existingUser.isVerified) {
+          throw new AppError('Email is already registered.', 400, 'USER_EXISTS');
+        }
+
+        // Allow overwriting unverified account
+        const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        existingUser.passwordHash = passwordHash;
+        existingUser.verificationToken = verificationToken;
+        existingUser.verificationTokenExpiry = verificationTokenExpiry;
+        user = await existingUser.save();
+
+        await Candidate.findOneAndUpdate(
+          { userId: user._id },
+          { name, phone, skills: [] },
+          { upsert: true }
+        );
+      } else {
+        const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        user = await User.create({
+          email,
+          passwordHash,
+          role: 'candidate',
+          isVerified: false,
+          verificationToken,
+          verificationTokenExpiry,
+        });
+
+        // Create Candidate profile
+        await Candidate.create({
+          userId: user._id,
+          name,
+          phone,
+          skills: [],
+        });
       }
 
-      const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      const user = await User.create({
-        email,
-        passwordHash,
-        role: 'candidate',
-        isVerified: false,
-        verificationToken,
-        verificationTokenExpiry,
-      });
-
-      // Create Candidate profile
-      await Candidate.create({
-        userId: user._id,
-        name,
-        phone,
-        skills: [],
-      });
-
+      const verificationToken = user.verificationToken!;
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
       const verifyLink = `${clientUrl}/verify-email?token=${verificationToken}`;
 
@@ -184,7 +228,9 @@ router.post(
         }
       }
 
-      logger.info(`\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`);
+      logger.info(
+        `\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`
+      );
 
       res.status(201).json({
         userId: user._id,
@@ -269,7 +315,7 @@ router.post(
 
       // Generate JWT Access Token
       const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-change-in-production';
-      const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+      const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30m';
 
       const payload = {
         sub: user._id,

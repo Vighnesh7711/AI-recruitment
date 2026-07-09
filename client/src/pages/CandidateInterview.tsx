@@ -67,9 +67,18 @@ export function CandidateInterview() {
 
   // Clear every outstanding timer/interval
   const clearTimers = () => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    if (pollTimeoutRef.current) { clearTimeout(pollTimeoutRef.current); pollTimeoutRef.current = null; }
-    if (speakTimeoutRef.current) { clearTimeout(speakTimeoutRef.current); speakTimeoutRef.current = null; }
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+    if (speakTimeoutRef.current) {
+      clearTimeout(speakTimeoutRef.current);
+      speakTimeoutRef.current = null;
+    }
   };
 
   // Start the interview session
@@ -81,7 +90,7 @@ export function CandidateInterview() {
       setSessionId(res.data.sessionId);
       setQuestions(res.data.questions || []);
       setCurrentIndex(0);
-      
+
       const serverMode: Mode = res.data.mode === 'avatar' ? 'avatar' : 'text';
       setMode(serverMode);
 
@@ -92,7 +101,8 @@ export function CandidateInterview() {
         setPhase('listening');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || err.message || 'Failed to start interview session.';
+      const msg =
+        err.response?.data?.error?.message || err.message || 'Failed to start interview session.';
       setError(msg);
       setPhase('error');
     }
@@ -168,6 +178,7 @@ export function CandidateInterview() {
 
   // Start microphone recording (manually triggered by the button)
   const startRecording = async () => {
+    setError('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -183,7 +194,8 @@ export function CandidateInterview() {
       console.error('Microphone error:', err);
       let msg = 'Microphone access failed: ';
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        msg += 'Permission denied. Please allow microphone access in your browser settings and check Brave Shields.';
+        msg +=
+          'Permission denied. Please allow microphone access in your browser settings and check Brave Shields.';
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         msg += 'No microphone detected. Please plug in a microphone.';
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
@@ -211,6 +223,7 @@ export function CandidateInterview() {
   // Submit text answer (text mode)
   const handleSubmitTextAnswer = async () => {
     if (!textAnswer.trim()) return;
+    setError('');
     setPhase('processing');
     const answerText = textAnswer.trim();
     setTextAnswer('');
@@ -239,12 +252,13 @@ export function CandidateInterview() {
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Failed to process answer.';
       setError(msg);
-      setPhase('error');
+      setPhase('listening');
     }
   };
 
   // Stop recording & submit audio answer (voice mode)
   const handleSubmitAudioAnswer = async () => {
+    setError('');
     setPhase('processing');
     stopRecording();
 
@@ -293,7 +307,7 @@ export function CandidateInterview() {
       } catch (err: any) {
         const msg = err.response?.data?.error?.message || 'Failed to process answer.';
         setError(msg);
-        setPhase('error');
+        setPhase('listening');
       }
     };
     reader.readAsDataURL(blob);
@@ -316,11 +330,16 @@ export function CandidateInterview() {
   // Category badge color
   const catColor = (cat: string) => {
     switch (cat) {
-      case 'technical': return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-      case 'behavioral': return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-      case 'situational': return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
-      case 'culture_fit': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-      default: return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+      case 'technical':
+        return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+      case 'behavioral':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+      case 'situational':
+        return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      case 'culture_fit':
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+      default:
+        return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
     }
   };
 
@@ -339,19 +358,23 @@ export function CandidateInterview() {
             <Trophy className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-extrabold mb-2">Interview Complete!</h1>
-          <p className="text-slate-400 mb-8">Your responses have been recorded and evaluated by our AI system.</p>
+          <p className="text-slate-400 mb-8">
+            Your responses have been recorded and evaluated by our AI system.
+          </p>
 
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
               <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Interview Score</p>
               <p className="text-2xl font-bold text-indigo-400">
-                {Math.round(finalResult.overallInterviewScore || 0)}<span className="text-sm text-slate-500">/100</span>
+                {Math.round(finalResult.overallInterviewScore || 0)}
+                <span className="text-sm text-slate-500">/100</span>
               </p>
             </div>
             <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
               <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Final Score</p>
               <p className="text-2xl font-bold text-emerald-400">
-                {finalResult.finalWeightedScore || 0}<span className="text-sm text-slate-500">/100</span>
+                {finalResult.finalWeightedScore || 0}
+                <span className="text-sm text-slate-500">/100</span>
               </p>
             </div>
           </div>
@@ -417,7 +440,9 @@ export function CandidateInterview() {
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Styled inline animations to avoid missing stylesheets */}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes avatarBlink {
           0%, 90%, 100% { transform: scaleY(1); }
           95% { transform: scaleY(0.1); }
@@ -446,18 +471,28 @@ export function CandidateInterview() {
         .animate-spin-ring {
           animation: spinRing 4s infinite linear;
         }
-      `}} />
+      `,
+        }}
+      />
 
       <div className="max-w-4xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         {/* Left Column: Live Animated Conversation Avatar */}
         <div className="lg:col-span-5 flex flex-col items-center justify-center space-y-4">
           <div className="relative w-72 h-72 rounded-3xl bg-slate-900/60 border border-slate-800 flex items-center justify-center shadow-2xl overflow-hidden backdrop-blur-xl group">
             {/* Ambient glowing background behind avatar */}
-            <div className={`absolute inset-0 transition-all duration-700 blur-2xl opacity-40 ${
-              phase === 'speaking' ? 'bg-gradient-to-tr from-indigo-500 to-purple-500' :
-              phase === 'listening' ? (isRecording ? 'bg-gradient-to-tr from-red-500 to-rose-500' : 'bg-gradient-to-tr from-emerald-500 to-teal-500') :
-              phase === 'processing' ? 'bg-gradient-to-tr from-cyan-500 to-blue-500 animate-pulse' : 'bg-indigo-500/10'
-            }`} />
+            <div
+              className={`absolute inset-0 transition-all duration-700 blur-2xl opacity-40 ${
+                phase === 'speaking'
+                  ? 'bg-gradient-to-tr from-indigo-500 to-purple-500'
+                  : phase === 'listening'
+                    ? isRecording
+                      ? 'bg-gradient-to-tr from-red-500 to-rose-500'
+                      : 'bg-gradient-to-tr from-emerald-500 to-teal-500'
+                    : phase === 'processing'
+                      ? 'bg-gradient-to-tr from-cyan-500 to-blue-500 animate-pulse'
+                      : 'bg-indigo-500/10'
+              }`}
+            />
 
             {/* Glowing sound wave rings around the avatar */}
             {phase === 'speaking' && (
@@ -474,45 +509,121 @@ export function CandidateInterview() {
 
             {/* Vector Animated Avatar Head */}
             <div className="relative z-10 flex flex-col items-center justify-center animate-avatar-float">
-              <svg width="180" height="180" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+              <svg
+                width="180"
+                height="180"
+                viewBox="0 0 160 160"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+              >
                 {/* Outer Head Shield/Helmet */}
-                <path d="M40 50C40 25 50 15 80 15C110 15 120 25 120 50V90C120 115 105 125 80 125C55 125 40 115 40 90V50Z" fill="url(#avatarHeadGrad)" stroke="#6366F1" strokeWidth="2.5" />
-                
+                <path
+                  d="M40 50C40 25 50 15 80 15C110 15 120 25 120 50V90C120 115 105 125 80 125C55 125 40 115 40 90V50Z"
+                  fill="url(#avatarHeadGrad)"
+                  stroke="#6366F1"
+                  strokeWidth="2.5"
+                />
+
                 {/* Glassmorphic Face Visor */}
-                <path d="M46 54C46 34 52 24 80 24C108 24 114 34 114 54V84C114 104 102 114 80 114C58 114 46 104 46 84V54Z" fill="rgba(15, 23, 42, 0.65)" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="1.5" />
-                
+                <path
+                  d="M46 54C46 34 52 24 80 24C108 24 114 34 114 54V84C114 104 102 114 80 114C58 114 46 104 46 84V54Z"
+                  fill="rgba(15, 23, 42, 0.65)"
+                  stroke="rgba(99, 102, 241, 0.4)"
+                  strokeWidth="1.5"
+                />
+
                 {/* Left & Right Glowing Eyes */}
                 <g className="animate-avatar-blink origin-center">
-                  <circle cx="65" cy="55" r="5" fill="#38BDF8" className="drop-shadow-[0_0_6px_#38BDF8]" />
-                  <circle cx="95" cy="55" r="5" fill="#38BDF8" className="drop-shadow-[0_0_6px_#38BDF8]" />
+                  <circle
+                    cx="65"
+                    cy="55"
+                    r="5"
+                    fill="#38BDF8"
+                    className="drop-shadow-[0_0_6px_#38BDF8]"
+                  />
+                  <circle
+                    cx="95"
+                    cy="55"
+                    r="5"
+                    fill="#38BDF8"
+                    className="drop-shadow-[0_0_6px_#38BDF8]"
+                  />
                 </g>
 
                 {/* Cyber Face Details */}
-                <path d="M50 72H58" stroke="rgba(56, 189, 248, 0.5)" strokeWidth="1.5" strokeLinecap="round" />
-                <path d="M102 72H110" stroke="rgba(56, 189, 248, 0.5)" strokeWidth="1.5" strokeLinecap="round" />
+                <path
+                  d="M50 72H58"
+                  stroke="rgba(56, 189, 248, 0.5)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M102 72H110"
+                  stroke="rgba(56, 189, 248, 0.5)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
 
                 {/* Animated Mouth */}
                 {phase === 'speaking' ? (
                   /* Talking mouth (tall, thin capsule oscillating height) */
-                  <rect x="74" y="70" width="12" height="24" rx="6" fill="#F43F5E" className="animate-avatar-talk origin-center" />
+                  <rect
+                    x="74"
+                    y="70"
+                    width="12"
+                    height="24"
+                    rx="6"
+                    fill="#F43F5E"
+                    className="animate-avatar-talk origin-center"
+                  />
                 ) : phase === 'processing' ? (
                   /* Processing mouth (spinning indicator) */
-                  <circle cx="80" cy="80" r="8" stroke="#F59E0B" strokeWidth="2" strokeDasharray="6 3" className="animate-spin-ring origin-center" />
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="8"
+                    stroke="#F59E0B"
+                    strokeWidth="2"
+                    strokeDasharray="6 3"
+                    className="animate-spin-ring origin-center"
+                  />
                 ) : (
                   /* Static/Listening mouth (neutral slightly curved line) */
                   <rect x="70" y="80" width="20" height="3" rx="1.5" fill="#10B981" />
                 )}
 
                 {/* Neopixel Neck connector */}
-                <rect x="72" y="125" width="16" height="15" rx="2" fill="#1E293B" stroke="#475569" strokeWidth="1" />
+                <rect
+                  x="72"
+                  y="125"
+                  width="16"
+                  height="15"
+                  rx="2"
+                  fill="#1E293B"
+                  stroke="#475569"
+                  strokeWidth="1"
+                />
                 <line x1="75" y1="130" x2="85" y2="130" stroke="#6366F1" strokeWidth="2" />
 
                 {/* Collar/Base */}
-                <path d="M35 145C35 140 50 135 80 135C110 135 125 140 125 145V155H35V145Z" fill="#0F172A" stroke="#334155" strokeWidth="2" />
+                <path
+                  d="M35 145C35 140 50 135 80 135C110 135 125 140 125 145V155H35V145Z"
+                  fill="#0F172A"
+                  stroke="#334155"
+                  strokeWidth="2"
+                />
 
                 {/* Gradients */}
                 <defs>
-                  <linearGradient id="avatarHeadGrad" x1="80" y1="15" x2="80" y2="125" gradientUnits="userSpaceOnUse">
+                  <linearGradient
+                    id="avatarHeadGrad"
+                    x1="80"
+                    y1="15"
+                    x2="80"
+                    y2="125"
+                    gradientUnits="userSpaceOnUse"
+                  >
                     <stop stopColor="#1E1B4B" />
                     <stop offset="1" stopColor="#0F172A" />
                   </linearGradient>
@@ -522,9 +633,15 @@ export function CandidateInterview() {
 
             {/* Avatar Status Label overlay */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[10px] uppercase tracking-wider font-bold text-slate-400 z-10">
-              {phase === 'speaking' ? 'AI Recruiter: Speaking' :
-               phase === 'listening' ? (isRecording ? 'Listening...' : 'Microphone Ready') :
-               phase === 'processing' ? 'AI Evaluation...' : 'Offline'}
+              {phase === 'speaking'
+                ? 'AI Recruiter: Speaking'
+                : phase === 'listening'
+                  ? isRecording
+                    ? 'Listening...'
+                    : 'Microphone Ready'
+                  : phase === 'processing'
+                    ? 'AI Evaluation...'
+                    : 'Offline'}
             </div>
           </div>
 
@@ -550,7 +667,8 @@ export function CandidateInterview() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" /> AuraRecruit Interview Session
+              <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" /> AuraRecruit Interview
+              Session
             </h1>
             {mode === 'avatar' && (
               <span className="text-[10px] uppercase tracking-wider font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full">
@@ -572,7 +690,9 @@ export function CandidateInterview() {
               >
                 <div className="flex items-center gap-2 mb-3.5">
                   <Brain className="w-4 h-4 text-indigo-400" />
-                  <span className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded-full border ${catColor(currentQuestion.category)}`}>
+                  <span
+                    className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded-full border ${catColor(currentQuestion.category)}`}
+                  >
                     {(currentQuestion.category || 'general').replace('_', ' ')}
                   </span>
                 </div>
@@ -585,6 +705,16 @@ export function CandidateInterview() {
 
           {/* Input & Microphone Interactive Panel */}
           <div className="space-y-4">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
             {/* TEXT MODE */}
             {mode === 'text' && phase === 'listening' && (
               <motion.div
@@ -634,7 +764,9 @@ export function CandidateInterview() {
                     </button>
                     <div className="text-center">
                       <p className="text-sm font-semibold text-slate-200">Microphone Ready</p>
-                      <p className="text-xs text-slate-500 mt-1">Click the button above to start speaking your answer.</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Click the button above to start speaking your answer.
+                      </p>
                     </div>
                   </>
                 ) : (
@@ -650,7 +782,9 @@ export function CandidateInterview() {
                         <span className="w-2 h-2 rounded-full bg-red-500" />
                         Listening & Recording...
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">Click the red button when you are finished speaking to submit your answer.</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Click the red button when you are finished speaking to submit your answer.
+                      </p>
                     </div>
                   </>
                 )}
@@ -665,7 +799,9 @@ export function CandidateInterview() {
                 className="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-8 flex flex-col items-center justify-center space-y-3"
               >
                 <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
-                <p className="text-sm text-slate-300 font-medium">Evaluating response content with AI recruiter...</p>
+                <p className="text-sm text-slate-300 font-medium">
+                  Evaluating response content with AI recruiter...
+                </p>
               </motion.div>
             )}
 
@@ -678,7 +814,8 @@ export function CandidateInterview() {
               >
                 <Volume2 className="w-5 h-5 text-indigo-400 shrink-0" />
                 <p className="text-xs text-indigo-300 leading-relaxed">
-                  The AI recruiter is currently reading out the question. Please listen carefully. Once completed, your microphone controls will automatically unlock.
+                  The AI recruiter is currently reading out the question. Please listen carefully.
+                  Once completed, your microphone controls will automatically unlock.
                 </p>
               </motion.div>
             )}
@@ -704,8 +841,11 @@ export function CandidateInterview() {
               <div
                 key={idx}
                 className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  idx < currentIndex ? 'bg-emerald-500' :
-                  idx === currentIndex ? 'bg-indigo-500 scale-125 shadow-sm shadow-indigo-500/50' : 'bg-slate-800'
+                  idx < currentIndex
+                    ? 'bg-emerald-500'
+                    : idx === currentIndex
+                      ? 'bg-indigo-500 scale-125 shadow-sm shadow-indigo-500/50'
+                      : 'bg-slate-800'
                 }`}
               />
             ))}

@@ -1,6 +1,17 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import { Application, JobPosting, Resume, User, Company, Candidate, Hr, ResumeAnalysis } from '../../../database';
+import {
+  Application,
+  JobPosting,
+  Resume,
+  User,
+  Company,
+  Candidate,
+  Hr,
+  ResumeAnalysis,
+  Interview,
+  InterviewEvaluation,
+} from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
 import logger from '../lib/logger';
@@ -126,20 +137,24 @@ router.get(
           status: app.status,
           appliedOn: app.appliedOn,
           createdAt: app.appliedOn,
-          jobId: jobObj ? {
-            _id: jobObj._id,
-            title: jobObj.title,
-            domain: jobObj.domain,
-            department: jobObj.domain,
-            location: jobObj.location,
-            companyId: companyObj ? {
-              _id: companyObj._id,
-              name: companyObj.companyName,
-              companyName: companyObj.companyName,
-              logoUrl: companyObj.logo,
-              logo: companyObj.logo,
-            } : null,
-          } : null,
+          jobId: jobObj
+            ? {
+                _id: jobObj._id,
+                title: jobObj.title,
+                domain: jobObj.domain,
+                department: jobObj.domain,
+                location: jobObj.location,
+                companyId: companyObj
+                  ? {
+                      _id: companyObj._id,
+                      name: companyObj.companyName,
+                      companyName: companyObj.companyName,
+                      logoUrl: companyObj.logo,
+                      logo: companyObj.logo,
+                    }
+                  : null,
+              }
+            : null,
         };
       });
 
@@ -164,7 +179,11 @@ router.get(
         throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
       if (!hr.companyId) {
-        throw new AppError('Please complete your company profile before viewing applications.', 400, 'COMPANY_REQUIRED');
+        throw new AppError(
+          'Please complete your company profile before viewing applications.',
+          400,
+          'COMPANY_REQUIRED'
+        );
       }
 
       const jobs = await JobPosting.find({ companyId: hr.companyId });
@@ -182,34 +201,68 @@ router.get(
         .populate('resumeId')
         .sort({ appliedOn: -1 });
 
-      const response = applications.map((app: any) => {
-        const cand = app.candidateId;
-        const userObj = cand?.userId;
-        const job = app.jobId;
-        const resume = app.resumeId;
+      const response = await Promise.all(
+        applications.map(async (app: any) => {
+          const cand = app.candidateId;
+          const userObj = cand?.userId;
+          const job = app.jobId;
+          const resume = app.resumeId;
 
-        return {
-          _id: app._id,
-          status: app.status,
-          atsScore: app.atsScore,
-          atsAnalysis: app.atsAnalysis,
-          resumeId: resume ? resume._id : '',
-          resumePath: resume ? resume.resumeUrl : '',
-          createdAt: app.appliedOn,
-          candidateId: cand ? {
-            _id: cand._id,
-            fullName: cand.name,
-            email: userObj ? userObj.email : '',
-            profilePicture: cand.profilePicture || '',
-          } : null,
-          jobId: job ? {
-            _id: job._id,
-            title: job.title,
-            autoScreenEnabled: job.autoScreenEnabled || false,
-            atsCutoffScore: job.atsCutoffScore || 60,
-          } : null,
-        };
-      });
+          // Fetch associated interview & evaluation
+          const interview = await Interview.findOne({ applicationId: app._id });
+          let evaluation = null;
+          if (interview) {
+            evaluation = await InterviewEvaluation.findOne({ interviewId: interview._id });
+          }
+
+          return {
+            _id: app._id,
+            status: app.status,
+            atsScore: app.atsScore,
+            atsAnalysis: app.atsAnalysis,
+            resumeId: resume ? resume._id : '',
+            resumePath: resume ? resume.resumeUrl : '',
+            createdAt: app.appliedOn,
+            candidateId: cand
+              ? {
+                  _id: cand._id,
+                  fullName: cand.name,
+                  email: userObj ? userObj.email : '',
+                  profilePicture: cand.profilePicture || '',
+                }
+              : null,
+            jobId: job
+              ? {
+                  _id: job._id,
+                  title: job.title,
+                  autoScreenEnabled: app.autoScreenEnabled !== undefined ? app.autoScreenEnabled : (job.autoScreenEnabled || false),
+                  atsCutoffScore: app.atsCutoffScore !== undefined ? app.atsCutoffScore : (job.atsCutoffScore || 60),
+                }
+              : null,
+            interview: interview
+              ? {
+                  _id: interview._id,
+                  status: interview.result,
+                  overallScore: interview.overallScore,
+                  result: interview.result,
+                }
+              : null,
+            evaluation: evaluation
+              ? {
+                  technicalScore: evaluation.technicalScore,
+                  communicationScore: evaluation.communicationScore,
+                  confidenceScore: evaluation.confidenceScore,
+                  grammarScore: evaluation.grammarScore,
+                  problemSolvingScore: evaluation.problemSolvingScore,
+                  behavioralScore: evaluation.behavioralScore,
+                  overallScore: evaluation.overallScore,
+                  recommendation: evaluation.recommendation,
+                  feedback: evaluation.feedback,
+                }
+              : null,
+          };
+        })
+      );
 
       res.json(response);
     } catch (error) {
@@ -264,23 +317,27 @@ router.get(
         status: application.status,
         appliedOn: application.appliedOn,
         createdAt: application.appliedOn,
-        jobId: jobObj ? {
-          _id: jobObj._id,
-          title: jobObj.title,
-          domain: jobObj.domain,
-          department: jobObj.domain,
-          location: jobObj.location,
-          description: jobObj.description,
-          companyId: companyObj ? {
-            _id: companyObj._id,
-            name: companyObj.companyName,
-            companyName: companyObj.companyName,
-            logoUrl: companyObj.logo,
-            logo: companyObj.logo,
-            website: companyObj.website,
-            industry: companyObj.industry,
-          } : null,
-        } : null,
+        jobId: jobObj
+          ? {
+              _id: jobObj._id,
+              title: jobObj.title,
+              domain: jobObj.domain,
+              department: jobObj.domain,
+              location: jobObj.location,
+              description: jobObj.description,
+              companyId: companyObj
+                ? {
+                    _id: companyObj._id,
+                    name: companyObj.companyName,
+                    companyName: companyObj.companyName,
+                    logoUrl: companyObj.logo,
+                    logo: companyObj.logo,
+                    website: companyObj.website,
+                    industry: companyObj.industry,
+                  }
+                : null,
+            }
+          : null,
       };
 
       res.json(response);
@@ -326,11 +383,7 @@ router.delete(
       // Cannot cancel once the outcome is final.
       const finalStatuses = ['selected', 'hired', 'rejected'];
       if (finalStatuses.includes(application.status)) {
-        throw new AppError(
-          'This application can no longer be cancelled.',
-          400,
-          'CANNOT_CANCEL'
-        );
+        throw new AppError('This application can no longer be cancelled.', 400, 'CANNOT_CANCEL');
       }
 
       await application.deleteOne();
@@ -388,11 +441,7 @@ router.patch(
 
       // Check if job belongs to HR's company
       if (job.companyId.toString() !== hr.companyId.toString()) {
-        throw new AppError(
-          'Unauthorized update permissions access.',
-          403,
-          'FORBIDDEN'
-        );
+        throw new AppError('Unauthorized update permissions access.', 403, 'FORBIDDEN');
       }
 
       application.status = status as any;
@@ -416,7 +465,10 @@ router.patch(
                   candidateName: candidate.name,
                   applicationId: application._id.toString(),
                   atsScore: application.atsScore || 0,
-                  rejectionReason: rejectionReason || application.rejectionReason || 'Manually rejected by HR.',
+                  weaknesses: application.atsAnalysis?.weaknesses || [],
+                  recommendations: application.atsAnalysis?.recommendations || [],
+                  rejectionReason:
+                    rejectionReason || application.rejectionReason || 'Manually rejected by HR.',
                 },
                 { timeout: 5000 }
               );
@@ -433,9 +485,44 @@ router.patch(
       if (status === 'shortlisted') {
         const hrUserEmail = req.user!.email;
         const hrUserId = req.user!._id;
-        autoScheduleInterview(application._id.toString(), hrUserId.toString(), hrUserEmail).catch(err => {
-          logger.error(`[Application] Auto-schedule error: ${err.message}`);
-        });
+        autoScheduleInterview(application._id.toString(), hrUserId.toString(), hrUserEmail).catch(
+          (err) => {
+            logger.error(`[Application] Auto-schedule error: ${err.message}`);
+          }
+        );
+      }
+
+      if (status === 'hired') {
+        const webhookUrl = process.env.N8N_WEBHOOK_OFFER;
+        if (webhookUrl) {
+          try {
+            const candidate = await Candidate.findById(application.candidateId).populate('userId');
+            if (candidate) {
+              const userObj: any = candidate.userId;
+              let companyName = 'Our Company';
+              if (job.companyId) {
+                const company = await Company.findById(job.companyId);
+                if (company) {
+                  companyName = company.companyName;
+                }
+              }
+              await axios.post(
+                webhookUrl,
+                {
+                  candidateId: candidate._id.toString(),
+                  candidateEmail: userObj ? userObj.email : '',
+                  candidateName: candidate.name,
+                  jobTitle: job.title,
+                  companyName,
+                },
+                { timeout: 5000 }
+              );
+              logger.info(`[Application] N8N offer webhook fired for application ${application._id}`);
+            }
+          } catch (err: any) {
+            logger.warn(`[Application] N8N offer webhook failed to fire: ${err.message}`);
+          }
+        }
       }
 
       res.json({
@@ -529,6 +616,37 @@ router.post(
 
       res.json({
         message: 'Offer sent and application status updated to selected.',
+        application,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /application/:id/auto-screen
+ * Body: { autoScreenEnabled }
+ */
+router.patch(
+  '/:id/auto-screen',
+  requireAuth,
+  requireRole('hr'),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { autoScreenEnabled } = req.body;
+
+      const application = await Application.findById(id);
+      if (!application) {
+        throw new AppError('Application not found.', 404, 'NOT_FOUND');
+      }
+
+      application.autoScreenEnabled = autoScreenEnabled === true;
+      await application.save();
+
+      res.json({
+        message: 'Application auto-screen setting updated successfully.',
         application,
       });
     } catch (error) {

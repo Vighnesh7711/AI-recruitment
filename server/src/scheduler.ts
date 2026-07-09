@@ -1,6 +1,15 @@
 import cron from 'node-cron';
 import axios from 'axios';
-import { InterviewReminder, Interview, User, JobPosting, Company, Candidate, Hr, Application } from '../../database';
+import {
+  InterviewReminder,
+  Interview,
+  User,
+  JobPosting,
+  Company,
+  Candidate,
+  Hr,
+  Application,
+} from '../../database';
 import logger from './lib/logger';
 
 export function startScheduler() {
@@ -52,7 +61,9 @@ export function startScheduler() {
           // Fetch details
           const application = await Application.findById(interview.applicationId);
           if (!application) {
-            logger.warn(`[Scheduler] Application not found for interview ${interview._id}. Skipping.`);
+            logger.warn(
+              `[Scheduler] Application not found for interview ${interview._id}. Skipping.`
+            );
             reminder.emailSent = true;
             await reminder.save();
             continue;

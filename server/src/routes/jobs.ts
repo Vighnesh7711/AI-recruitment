@@ -53,17 +53,17 @@ router.post(
   requireRole('hr'),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const {
-        title,
-        domain,
-        experience,
-        skillsRequired,
-        description,
-        salary,
-        deadline,
-      } = req.body;
+      const { title, domain, experience, skillsRequired, description, salary, deadline } = req.body;
 
-      if (!title || !description || !domain || !experience || !skillsRequired || !salary || !deadline) {
+      if (
+        !title ||
+        !description ||
+        !domain ||
+        !experience ||
+        !skillsRequired ||
+        !salary ||
+        !deadline
+      ) {
         throw new AppError('Missing required fields.', 400, 'VALIDATION_ERROR');
       }
 
@@ -73,7 +73,11 @@ router.post(
       }
 
       if (!hr.companyId) {
-        throw new AppError('Please complete your company profile before posting jobs.', 400, 'COMPANY_REQUIRED');
+        throw new AppError(
+          'Please complete your company profile before posting jobs.',
+          400,
+          'COMPANY_REQUIRED'
+        );
       }
 
       const job = await JobPosting.create({
@@ -130,7 +134,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
     const jobIds = jobs.map((j) => j._id);
     const counts = await Application.aggregate([
       { $match: { jobId: { $in: jobIds } } },
-      { $group: { _id: '$jobId', count: { $sum: 1 } } }
+      { $group: { _id: '$jobId', count: { $sum: 1 } } },
     ]);
 
     const countMap = new Map<string, number>();
@@ -169,7 +173,11 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction): Prom
     if (isPrivileged) {
       const hr = await Hr.findOne({ userId: user._id });
       if (!hr || !hr.companyId || hr.companyId.toString() !== job.companyId._id.toString()) {
-        throw new AppError('You do not have permission to view this job posting.', 403, 'FORBIDDEN');
+        throw new AppError(
+          'You do not have permission to view this job posting.',
+          403,
+          'FORBIDDEN'
+        );
       }
     } else {
       if (job.status !== 'active') {
@@ -200,16 +208,8 @@ router.put(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const {
-        title,
-        domain,
-        experience,
-        skillsRequired,
-        description,
-        salary,
-        deadline,
-        status,
-      } = req.body;
+      const { title, domain, experience, skillsRequired, description, salary, deadline, status } =
+        req.body;
 
       const hr = await Hr.findOne({ userId: req.user!._id });
       if (!hr) {
