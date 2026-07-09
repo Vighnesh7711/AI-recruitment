@@ -81,7 +81,9 @@ export function HRInterviews() {
       // Filter for 'shortlisted' status (yet to be scheduled)
       setShortlisted(allApps.filter((app) => app.status === 'shortlisted'));
       // Filter for 'under_review' status (including newly 'applied' applications)
-      setUnderReview(allApps.filter((app) => app.status === 'under_review' || app.status === 'applied'));
+      setUnderReview(
+        allApps.filter((app) => app.status === 'under_review' || app.status === 'applied')
+      );
 
       // 2. Fetch already scheduled interviews
       const interviewsRes = await api.get('/interview');
@@ -98,7 +100,9 @@ export function HRInterviews() {
       setError('');
       setSuccess('');
       await api.patch(`/application/${appId}/status`, { status: newStatus });
-      setSuccess(`Candidate successfully ${newStatus === 'shortlisted' ? 'shortlisted' : 'rejected'}.`);
+      setSuccess(
+        `Candidate successfully ${newStatus === 'shortlisted' ? 'shortlisted' : 'rejected'}.`
+      );
       if (selectedApp?._id === appId) {
         setSelectedApp(null);
       }

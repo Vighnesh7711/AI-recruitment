@@ -403,16 +403,20 @@ router.get(
       // Check access permission
       const isCandidate = candidate.userId.toString() === req.user!._id.toString();
       const hr = await Hr.findOne({ userId: req.user!._id });
-      const jobCompanyId = (job.companyId && (job.companyId as any)._id)
-        ? (job.companyId as any)._id.toString()
-        : (job.companyId as any)?.toString();
-      const isInvitingHr = hr && jobCompanyId && hr.companyId && jobCompanyId === (hr.companyId as any).toString();
+      const jobCompanyId =
+        job.companyId && (job.companyId as any)._id
+          ? (job.companyId as any)._id.toString()
+          : (job.companyId as any)?.toString();
+      const isInvitingHr =
+        hr && jobCompanyId && hr.companyId && jobCompanyId === (hr.companyId as any).toString();
 
       if (!isCandidate && !isInvitingHr) {
         throw new AppError('You do not have permission to view this interview.', 403, 'FORBIDDEN');
       }
 
-      const responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId');
+      const responses = await QuestionResponse.find({ interviewId: interview._id }).populate(
+        'questionId'
+      );
       const questionsList = responses.map((resp) => {
         const qBank: any = resp.questionId;
         return {
@@ -488,13 +492,17 @@ router.get(
 
         const isCandidate = candidate.userId.toString() === req.user!._id.toString();
         const hr = await Hr.findOne({ userId: req.user!._id });
-        const jobCompanyId = (job.companyId && (job.companyId as any)._id)
-          ? (job.companyId as any)._id.toString()
-          : (job.companyId as any)?.toString();
-        const isInvitingHr = hr && jobCompanyId && hr.companyId && jobCompanyId === (hr.companyId as any).toString();
+        const jobCompanyId =
+          job.companyId && (job.companyId as any)._id
+            ? (job.companyId as any)._id.toString()
+            : (job.companyId as any)?.toString();
+        const isInvitingHr =
+          hr && jobCompanyId && hr.companyId && jobCompanyId === (hr.companyId as any).toString();
 
         if (isCandidate || isInvitingHr) {
-          const responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId');
+          const responses = await QuestionResponse.find({ interviewId: interview._id }).populate(
+            'questionId'
+          );
           const questionsList = responses.map((resp) => {
             const qBank: any = resp.questionId;
             return {
@@ -576,11 +584,14 @@ Return ONLY a valid JSON array of objects, with no markdown fences, no code bloc
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const response = await axios.post(url, {
-      contents: [{ parts: [{ text: prompt }] }]
+      contents: [{ parts: [{ text: prompt }] }],
     });
 
     let text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    text = text
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     const questions = JSON.parse(text);
     if (Array.isArray(questions) && questions.length === 10) {
       return questions.map((q, idx) => ({
@@ -591,7 +602,9 @@ Return ONLY a valid JSON array of objects, with no markdown fences, no code bloc
       }));
     }
   } catch (err: any) {
-    logger.warn(`[Interview] Failed to generate questions via Gemini, using fallback. Error: ${err.message}`);
+    logger.warn(
+      `[Interview] Failed to generate questions via Gemini, using fallback. Error: ${err.message}`
+    );
   }
 
   return generateFallbackQuestions(job);
@@ -604,62 +617,62 @@ function generateFallbackQuestions(job: any): any[] {
       questionId: 'q1',
       text: `Can you start by introducing yourself and summarizing your experience related to ${title}?`,
       category: 'culture_fit',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q2',
       text: `What are the key technical skills you bring that match the requirements of the ${title} role?`,
       category: 'technical',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q3',
       text: `Tell me about a challenging technical project you worked on recently. What was your role and how did you overcome the difficulties?`,
       category: 'behavioral',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q4',
       text: `How do you approach learning new technologies or frameworks when starting a new project?`,
       category: 'culture_fit',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q5',
       text: `Imagine you are asked to design a scalable feature but face conflicting requirements from stakeholders. How do you resolve this?`,
       category: 'situational',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q6',
       text: `Describe a situation where you had to debug a complex production issue under time pressure. What steps did you take?`,
       category: 'behavioral',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q7',
       text: `How do you ensure the quality of your code, and what is your experience with writing tests and performing code reviews?`,
       category: 'technical',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q8',
       text: `If you noticed a team member was falling behind on their deliverables, how would you approach them?`,
       category: 'situational',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q9',
       text: `What motivates you to perform your best work, and how do you align with the goals of this position?`,
       category: 'culture_fit',
-      weight: 1
+      weight: 1,
     },
     {
       questionId: 'q10',
       text: `Finally, what questions do you have for us, or is there anything else you'd like to share about your candidacy?`,
       category: 'culture_fit',
-      weight: 1
-    }
+      weight: 1,
+    },
   ];
 }
 
@@ -689,16 +702,20 @@ router.post(
       }
 
       // Generate questions if not already present
-      let responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId').sort({ questionOrder: 1 });
+      let responses = await QuestionResponse.find({ interviewId: interview._id })
+        .populate('questionId')
+        .sort({ questionOrder: 1 });
       if (responses.length === 0) {
         const job = await JobPosting.findById(application.jobId);
         if (!job) {
           throw new AppError('Associated job posting not found.', 404, 'NOT_FOUND');
         }
         const generated = await generateQuestions(job);
-        
+
         // Double check after generating to avoid race condition under concurrent calls (e.g. Strict Mode)
-        const checkAgain = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId').sort({ questionOrder: 1 });
+        const checkAgain = await QuestionResponse.find({ interviewId: interview._id })
+          .populate('questionId')
+          .sort({ questionOrder: 1 });
         if (checkAgain.length > 0) {
           responses = checkAgain;
         } else {
@@ -722,8 +739,12 @@ router.post(
               responses.push(qResp);
             } catch (err: any) {
               if (err.code === 11000) {
-                logger.info(`[Interview] Duplicate question response index detected. Falling back to existing responses.`);
-                responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId').sort({ questionOrder: 1 });
+                logger.info(
+                  `[Interview] Duplicate question response index detected. Falling back to existing responses.`
+                );
+                responses = await QuestionResponse.find({ interviewId: interview._id })
+                  .populate('questionId')
+                  .sort({ questionOrder: 1 });
                 break;
               }
               throw err;
@@ -737,21 +758,31 @@ router.post(
       let sessionId = `text_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       let mode: 'avatar' | 'text' = 'text';
       try {
-        const sessionRes = await axios.post(`${avatarServiceUrl}/avatar/session/start`, {
-          interviewId: interview._id.toString(),
-        }, { timeout: 3000 });
+        const sessionRes = await axios.post(
+          `${avatarServiceUrl}/avatar/session/start`,
+          {
+            interviewId: interview._id.toString(),
+          },
+          { timeout: 3000 }
+        );
         sessionId = sessionRes.data.sessionId;
         mode = 'avatar';
 
         // Trigger avatar to speak the first question
         const firstQuestionBank: any = responses[0].questionId;
         const firstQuestion = firstQuestionBank ? firstQuestionBank.question : 'Hello';
-        await axios.post(`${avatarServiceUrl}/avatar/ask`, {
-          sessionId,
-          questionText: firstQuestion,
-        }, { timeout: 3000 });
+        await axios.post(
+          `${avatarServiceUrl}/avatar/ask`,
+          {
+            sessionId,
+            questionText: firstQuestion,
+          },
+          { timeout: 3000 }
+        );
       } catch (err: any) {
-        logger.warn(`[Interview] Avatar-service unavailable, falling back to text-mode: ${err.message}`);
+        logger.warn(
+          `[Interview] Avatar-service unavailable, falling back to text-mode: ${err.message}`
+        );
         mode = 'text';
       }
 
@@ -825,9 +856,14 @@ router.post(
       } else {
         // Avatar-mode: try to get transcription from avatar-service
         try {
-          const listenRes = await axios.post(`${avatarServiceUrl}/avatar/listen`, { sessionId }, { timeout: 60000 });
+          const listenRes = await axios.post(
+            `${avatarServiceUrl}/avatar/listen`,
+            { sessionId },
+            { timeout: 60000 }
+          );
           transcript = (listenRes.data.transcript || '').trim();
-          transcriptionFailed = Boolean(listenRes.data.transcriptionFailed) || transcript.length === 0;
+          transcriptionFailed =
+            Boolean(listenRes.data.transcriptionFailed) || transcript.length === 0;
         } catch (err: any) {
           logger.warn(`[Interview] Avatar listen failed: ${err.message}. No transcript captured.`);
           transcript = '';
@@ -874,7 +910,9 @@ router.post(
         aiScore = evalRes.data.overall_score;
         aiFeedback = evalRes.data.feedback;
       } catch (err: any) {
-        logger.warn(`[Interview] Failed to evaluate answer via python-ai: ${err.message}. Falling back to default scoring.`);
+        logger.warn(
+          `[Interview] Failed to evaluate answer via python-ai: ${err.message}. Falling back to default scoring.`
+        );
       }
 
       currentQuestion.aiScore = aiScore;
@@ -935,8 +973,10 @@ router.post(
         let grammarScore = overallInterviewScore;
         let behavioralScore = overallInterviewScore;
         let confidenceScore = overallInterviewScore;
-        let feedback = 'The candidate completed the automated avatar interview and responded to all questions.';
-        let recommendation: 'strong_hire' | 'hire' | 'maybe' | 'no_hire' | 'strong_no_hire' = 'maybe';
+        let feedback =
+          'The candidate completed the automated avatar interview and responded to all questions.';
+        let recommendation: 'strong_hire' | 'hire' | 'maybe' | 'no_hire' | 'strong_no_hire' =
+          'maybe';
 
         const apiKey = process.env.GEMINI_API_KEY;
         if (apiKey) {
@@ -945,10 +985,12 @@ Job Title: "${job.title}"
 Job Description: "${job.description}"
 
 Here is the transcript of the interview with questions and candidate answers:
-${allResponses.map((q, idx) => {
-  const qb: any = q.questionId;
-  return `Q${idx + 1}: ${qb ? qb.question : ''}\nCandidate Answer: ${q.answer || ''}\nAI Feedback: ${q.feedback || ''}`;
-}).join('\n\n')}
+${allResponses
+  .map((q, idx) => {
+    const qb: any = q.questionId;
+    return `Q${idx + 1}: ${qb ? qb.question : ''}\nCandidate Answer: ${q.answer || ''}\nAI Feedback: ${q.feedback || ''}`;
+  })
+  .join('\n\n')}
 
 Provide a comprehensive evaluation. Return ONLY a valid JSON object matching this schema (do NOT include markdown formatting or code blocks):
 {
@@ -965,25 +1007,50 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
           try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const evalResponse = await axios.post(url, {
-              contents: [{ parts: [{ text: holisticPrompt }] }]
+              contents: [{ parts: [{ text: holisticPrompt }] }],
             });
 
             let evalText = evalResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            evalText = evalText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            evalText = evalText
+              .replace(/```json/gi, '')
+              .replace(/```/g, '')
+              .trim();
             const parsedEval = JSON.parse(evalText);
 
-            technicalScore = typeof parsedEval.technicalScore === 'number' ? parsedEval.technicalScore : technicalScore;
-            communicationScore = typeof parsedEval.communicationScore === 'number' ? parsedEval.communicationScore : communicationScore;
-            problemSolvingScore = typeof parsedEval.problemSolvingScore === 'number' ? parsedEval.problemSolvingScore : problemSolvingScore;
-            grammarScore = typeof parsedEval.grammarScore === 'number' ? parsedEval.grammarScore : grammarScore;
-            behavioralScore = typeof parsedEval.behavioralScore === 'number' ? parsedEval.behavioralScore : behavioralScore;
-            confidenceScore = typeof parsedEval.confidenceScore === 'number' ? parsedEval.confidenceScore : confidenceScore;
+            technicalScore =
+              typeof parsedEval.technicalScore === 'number'
+                ? parsedEval.technicalScore
+                : technicalScore;
+            communicationScore =
+              typeof parsedEval.communicationScore === 'number'
+                ? parsedEval.communicationScore
+                : communicationScore;
+            problemSolvingScore =
+              typeof parsedEval.problemSolvingScore === 'number'
+                ? parsedEval.problemSolvingScore
+                : problemSolvingScore;
+            grammarScore =
+              typeof parsedEval.grammarScore === 'number' ? parsedEval.grammarScore : grammarScore;
+            behavioralScore =
+              typeof parsedEval.behavioralScore === 'number'
+                ? parsedEval.behavioralScore
+                : behavioralScore;
+            confidenceScore =
+              typeof parsedEval.confidenceScore === 'number'
+                ? parsedEval.confidenceScore
+                : confidenceScore;
             feedback = parsedEval.feedback || feedback;
-            if (['strong_hire', 'hire', 'maybe', 'no_hire', 'strong_no_hire'].includes(parsedEval.recommendation)) {
+            if (
+              ['strong_hire', 'hire', 'maybe', 'no_hire', 'strong_no_hire'].includes(
+                parsedEval.recommendation
+              )
+            ) {
               recommendation = parsedEval.recommendation;
             }
           } catch (err: any) {
-            logger.warn(`[Interview] Failed to run holistic evaluation: ${err.message}. Using default parameters.`);
+            logger.warn(
+              `[Interview] Failed to run holistic evaluation: ${err.message}. Using default parameters.`
+            );
           }
         }
 
@@ -1032,9 +1099,13 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
                 },
                 { timeout: 5000 }
               );
-              logger.info(`[Interview] N8N interview rejection webhook fired for application ${application._id}`);
+              logger.info(
+                `[Interview] N8N interview rejection webhook fired for application ${application._id}`
+              );
             } catch (webhookErr: any) {
-              logger.warn(`[Interview] N8N interview rejection webhook failed to fire: ${webhookErr.message}`);
+              logger.warn(
+                `[Interview] N8N interview rejection webhook failed to fire: ${webhookErr.message}`
+              );
             }
           }
         }
@@ -1064,9 +1135,13 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
               },
               { timeout: 5000 }
             );
-            logger.info(`[Interview] N8N interview-complete webhook fired for application ${application._id}`);
+            logger.info(
+              `[Interview] N8N interview-complete webhook fired for application ${application._id}`
+            );
           } catch (webhookErr: any) {
-            logger.warn(`[Interview] N8N interview-complete webhook failed to fire: ${webhookErr.message}`);
+            logger.warn(
+              `[Interview] N8N interview-complete webhook failed to fire: ${webhookErr.message}`
+            );
           }
         }
 

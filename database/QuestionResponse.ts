@@ -41,7 +41,6 @@ const QuestionResponseSchema = new Schema<IQuestionResponse>(
 
 QuestionResponseSchema.index({ interviewId: 1, questionOrder: 1 }, { unique: true });
 
-
 export const QuestionResponse = mongoose.model<IQuestionResponse>(
   'QuestionResponse',
   QuestionResponseSchema,

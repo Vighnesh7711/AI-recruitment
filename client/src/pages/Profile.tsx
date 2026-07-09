@@ -193,11 +193,7 @@ export function Profile() {
             <div className="relative">
               <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-slate-800 bg-slate-950 flex items-center justify-center shadow-lg">
                 {picturePreview ? (
-                  <img
-                    src={picturePreview}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={picturePreview} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-4xl font-bold text-indigo-400">{initial}</span>
                 )}
@@ -330,7 +326,9 @@ export function Profile() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Experience</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  Experience
+                </label>
                 <input
                   type="text"
                   value={experience}
@@ -370,7 +368,9 @@ export function Profile() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">LinkedIn</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    LinkedIn
+                  </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Linkedin className="h-5 w-5 text-slate-500" />

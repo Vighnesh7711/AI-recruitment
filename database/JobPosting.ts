@@ -83,4 +83,8 @@ const JobPostingSchema = new Schema<IJobPosting>(
   }
 );
 
-export const JobPosting = mongoose.model<IJobPosting>('JobPosting', JobPostingSchema, 'job_postings');
+export const JobPosting = mongoose.model<IJobPosting>(
+  'JobPosting',
+  JobPostingSchema,
+  'job_postings'
+);

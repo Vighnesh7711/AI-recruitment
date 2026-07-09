@@ -1,6 +1,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import { Application, JobPosting, Resume, User, Company, Candidate, Hr, ResumeAnalysis } from '../../../database';
+import {
+  Application,
+  JobPosting,
+  Resume,
+  User,
+  Company,
+  Candidate,
+  Hr,
+  ResumeAnalysis,
+} from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
 import logger from '../lib/logger';
@@ -126,20 +135,24 @@ router.get(
           status: app.status,
           appliedOn: app.appliedOn,
           createdAt: app.appliedOn,
-          jobId: jobObj ? {
-            _id: jobObj._id,
-            title: jobObj.title,
-            domain: jobObj.domain,
-            department: jobObj.domain,
-            location: jobObj.location,
-            companyId: companyObj ? {
-              _id: companyObj._id,
-              name: companyObj.companyName,
-              companyName: companyObj.companyName,
-              logoUrl: companyObj.logo,
-              logo: companyObj.logo,
-            } : null,
-          } : null,
+          jobId: jobObj
+            ? {
+                _id: jobObj._id,
+                title: jobObj.title,
+                domain: jobObj.domain,
+                department: jobObj.domain,
+                location: jobObj.location,
+                companyId: companyObj
+                  ? {
+                      _id: companyObj._id,
+                      name: companyObj.companyName,
+                      companyName: companyObj.companyName,
+                      logoUrl: companyObj.logo,
+                      logo: companyObj.logo,
+                    }
+                  : null,
+              }
+            : null,
         };
       });
 
@@ -164,7 +177,11 @@ router.get(
         throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
       if (!hr.companyId) {
-        throw new AppError('Please complete your company profile before viewing applications.', 400, 'COMPANY_REQUIRED');
+        throw new AppError(
+          'Please complete your company profile before viewing applications.',
+          400,
+          'COMPANY_REQUIRED'
+        );
       }
 
       const jobs = await JobPosting.find({ companyId: hr.companyId });
@@ -196,18 +213,22 @@ router.get(
           resumeId: resume ? resume._id : '',
           resumePath: resume ? resume.resumeUrl : '',
           createdAt: app.appliedOn,
-          candidateId: cand ? {
-            _id: cand._id,
-            fullName: cand.name,
-            email: userObj ? userObj.email : '',
-            profilePicture: cand.profilePicture || '',
-          } : null,
-          jobId: job ? {
-            _id: job._id,
-            title: job.title,
-            autoScreenEnabled: job.autoScreenEnabled || false,
-            atsCutoffScore: job.atsCutoffScore || 60,
-          } : null,
+          candidateId: cand
+            ? {
+                _id: cand._id,
+                fullName: cand.name,
+                email: userObj ? userObj.email : '',
+                profilePicture: cand.profilePicture || '',
+              }
+            : null,
+          jobId: job
+            ? {
+                _id: job._id,
+                title: job.title,
+                autoScreenEnabled: job.autoScreenEnabled || false,
+                atsCutoffScore: job.atsCutoffScore || 60,
+              }
+            : null,
         };
       });
 
@@ -264,23 +285,27 @@ router.get(
         status: application.status,
         appliedOn: application.appliedOn,
         createdAt: application.appliedOn,
-        jobId: jobObj ? {
-          _id: jobObj._id,
-          title: jobObj.title,
-          domain: jobObj.domain,
-          department: jobObj.domain,
-          location: jobObj.location,
-          description: jobObj.description,
-          companyId: companyObj ? {
-            _id: companyObj._id,
-            name: companyObj.companyName,
-            companyName: companyObj.companyName,
-            logoUrl: companyObj.logo,
-            logo: companyObj.logo,
-            website: companyObj.website,
-            industry: companyObj.industry,
-          } : null,
-        } : null,
+        jobId: jobObj
+          ? {
+              _id: jobObj._id,
+              title: jobObj.title,
+              domain: jobObj.domain,
+              department: jobObj.domain,
+              location: jobObj.location,
+              description: jobObj.description,
+              companyId: companyObj
+                ? {
+                    _id: companyObj._id,
+                    name: companyObj.companyName,
+                    companyName: companyObj.companyName,
+                    logoUrl: companyObj.logo,
+                    logo: companyObj.logo,
+                    website: companyObj.website,
+                    industry: companyObj.industry,
+                  }
+                : null,
+            }
+          : null,
       };
 
       res.json(response);
@@ -326,11 +351,7 @@ router.delete(
       // Cannot cancel once the outcome is final.
       const finalStatuses = ['selected', 'hired', 'rejected'];
       if (finalStatuses.includes(application.status)) {
-        throw new AppError(
-          'This application can no longer be cancelled.',
-          400,
-          'CANNOT_CANCEL'
-        );
+        throw new AppError('This application can no longer be cancelled.', 400, 'CANNOT_CANCEL');
       }
 
       await application.deleteOne();
@@ -388,11 +409,7 @@ router.patch(
 
       // Check if job belongs to HR's company
       if (job.companyId.toString() !== hr.companyId.toString()) {
-        throw new AppError(
-          'Unauthorized update permissions access.',
-          403,
-          'FORBIDDEN'
-        );
+        throw new AppError('Unauthorized update permissions access.', 403, 'FORBIDDEN');
       }
 
       application.status = status as any;
@@ -416,7 +433,8 @@ router.patch(
                   candidateName: candidate.name,
                   applicationId: application._id.toString(),
                   atsScore: application.atsScore || 0,
-                  rejectionReason: rejectionReason || application.rejectionReason || 'Manually rejected by HR.',
+                  rejectionReason:
+                    rejectionReason || application.rejectionReason || 'Manually rejected by HR.',
                 },
                 { timeout: 5000 }
               );
@@ -433,9 +451,11 @@ router.patch(
       if (status === 'shortlisted') {
         const hrUserEmail = req.user!.email;
         const hrUserId = req.user!._id;
-        autoScheduleInterview(application._id.toString(), hrUserId.toString(), hrUserEmail).catch(err => {
-          logger.error(`[Application] Auto-schedule error: ${err.message}`);
-        });
+        autoScheduleInterview(application._id.toString(), hrUserId.toString(), hrUserEmail).catch(
+          (err) => {
+            logger.error(`[Application] Auto-schedule error: ${err.message}`);
+          }
+        );
       }
 
       res.json({

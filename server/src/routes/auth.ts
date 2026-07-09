@@ -102,7 +102,9 @@ router.post(
         }
       }
 
-      logger.info(`\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`);
+      logger.info(
+        `\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`
+      );
 
       res.status(201).json({
         userId: user._id,
@@ -184,7 +186,9 @@ router.post(
         }
       }
 
-      logger.info(`\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`);
+      logger.info(
+        `\n==================================================\nVERIFICATION LINK FOR ${email}:\n${verifyLink}\n==================================================\n`
+      );
 
       res.status(201).json({
         userId: user._id,

@@ -77,7 +77,8 @@ export function HRJobs() {
         )
       );
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Failed to update auto-screening configuration.';
+      const msg =
+        err.response?.data?.error?.message || 'Failed to update auto-screening configuration.';
       setError(msg);
     } finally {
       setActionId(null);
@@ -190,7 +191,8 @@ export function HRJobs() {
             <AlertTriangle className="w-12 h-12 text-slate-500 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-white mb-1">No Jobs Found</h3>
             <p className="text-slate-400 text-sm max-w-sm mx-auto mb-6">
-              You haven&apos;t posted any jobs yet. Create a job listing to start receiving applications.
+              You haven&apos;t posted any jobs yet. Create a job listing to start receiving
+              applications.
             </p>
             <Link
               to="/hr/jobs/new"

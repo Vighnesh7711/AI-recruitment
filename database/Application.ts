@@ -95,5 +95,8 @@ const ApplicationSchema = new Schema<IApplication>(
 // Compound unique index on (candidateId, jobId)
 ApplicationSchema.index({ candidateId: 1, jobId: 1 }, { unique: true });
 
-export const Application = mongoose.model<IApplication>('Application', ApplicationSchema, 'applications');
-
+export const Application = mongoose.model<IApplication>(
+  'Application',
+  ApplicationSchema,
+  'applications'
+);

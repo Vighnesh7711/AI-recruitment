@@ -5,7 +5,8 @@ const path = require('path');
 dotenv.config({ path: path.resolve(__dirname, '../server/.env') });
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const silentWebmBase64 = 'GkXfo6NgoSZjtQ7gQ52gA5aiwQIiDA0fDA0fggE7AIwDA0FCQ0ZESGFHQ0ZECaGDgYEB44OEg8CQc3Vwc3V4g4ODg4OSg8CQc3Vwc3V4g4ODg4OSg8CEg4OEhPCQc3Vwc3V4g4ODg4OSg8CEg4OEhPCQc3Vwc3V4g4ODg4OSg8CA';
+const silentWebmBase64 =
+  'GkXfo6NgoSZjtQ7gQ52gA5aiwQIiDA0fDA0fggE7AIwDA0FCQ0ZESGFHQ0ZECaGDgYEB44OEg8CQc3Vwc3V4g4ODg4OSg8CQc3Vwc3V4g4ODg4OSg8CEg4OEhPCQc3Vwc3V4g4ODg4OSg8CEg4OEhPCQc3Vwc3V4g4ODg4OSg8CA';
 
 async function testAudio() {
   try {

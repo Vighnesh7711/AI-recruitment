@@ -4,14 +4,14 @@ This directory contains 6 importable n8n workflow JSON files for the AuraRecruit
 
 ## Workflows
 
-| # | File | Trigger | Description |
-|---|------|---------|-------------|
-| 1 | `registration.json` | Webhook `POST /webhook/registration` | Sends welcome email on user sign-up |
-| 2 | `resume_rejected.json` | Webhook `POST /webhook/resume-rejected` | Sends improvement email with weaknesses/recommendations |
-| 3 | `interview_scheduled.json` | Webhook `POST /webhook/interview-scheduled` | Sends invite email, creates Google Calendar event, calls back `PATCH /interview/:id/calendar-synced` |
-| 4 | `interview_reminder.json` | Schedule Trigger (every 15 min) | Polls `GET /interview/reminders/due`, sends reminder, marks sent via `PATCH /interview/reminders/:id` |
-| 5 | `interview_complete.json` | Webhook `POST /webhook/interview-complete` | Appends row to Google Sheets, emails HR with evaluation summary |
-| 6 | `offer_email.json` | Webhook `POST /webhook/offer` | Sends official offer letter to candidate |
+| #   | File                       | Trigger                                     | Description                                                                                           |
+| --- | -------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | `registration.json`        | Webhook `POST /webhook/registration`        | Sends welcome email on user sign-up                                                                   |
+| 2   | `resume_rejected.json`     | Webhook `POST /webhook/resume-rejected`     | Sends improvement email with weaknesses/recommendations                                               |
+| 3   | `interview_scheduled.json` | Webhook `POST /webhook/interview-scheduled` | Sends invite email, creates Google Calendar event, calls back `PATCH /interview/:id/calendar-synced`  |
+| 4   | `interview_reminder.json`  | Schedule Trigger (every 15 min)             | Polls `GET /interview/reminders/due`, sends reminder, marks sent via `PATCH /interview/reminders/:id` |
+| 5   | `interview_complete.json`  | Webhook `POST /webhook/interview-complete`  | Appends row to Google Sheets, emails HR with evaluation summary                                       |
+| 6   | `offer_email.json`         | Webhook `POST /webhook/offer`               | Sends official offer letter to candidate                                                              |
 
 ## Setup
 

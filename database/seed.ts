@@ -152,7 +152,8 @@ async function seed() {
     domain: 'Engineering',
     difficulty: 'medium',
     question: 'Explain JavaScript closures.',
-    expectedAnswer: 'A closure is the combination of a function bundled together with references to its surrounding state...',
+    expectedAnswer:
+      'A closure is the combination of a function bundled together with references to its surrounding state...',
     keywords: ['closure', 'scope', 'lexical'],
   });
   console.log(`  -> QuestionBank created: ${questionBank._id}`);

@@ -1,7 +1,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import axios from 'axios';
-import { Resume, ResumeAnalysis, Application, JobPosting, Notification, Candidate, Hr } from '../../../database';
+import {
+  Resume,
+  ResumeAnalysis,
+  Application,
+  JobPosting,
+  Notification,
+  Candidate,
+  Hr,
+} from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { uploadToCloudinary } from '../utils/cloudinary';
 import { AppError } from '../utils/errors';
@@ -127,7 +135,11 @@ router.post(
         throw new AppError('HR profile not found.', 404, 'NOT_FOUND');
       }
       if (!hr.companyId) {
-        throw new AppError('Please complete your company profile before analyzing resumes.', 400, 'COMPANY_REQUIRED');
+        throw new AppError(
+          'Please complete your company profile before analyzing resumes.',
+          400,
+          'COMPANY_REQUIRED'
+        );
       }
 
       // 2. Find the application linked to this resume
@@ -145,7 +157,11 @@ router.post(
         const job = await JobPosting.findById(application.jobId);
         if (job) {
           if (job.companyId.toString() !== hr.companyId.toString()) {
-            throw new AppError('You do not have permission to modify this job posting.', 403, 'FORBIDDEN');
+            throw new AppError(
+              'You do not have permission to modify this job posting.',
+              403,
+              'FORBIDDEN'
+            );
           }
           jobObj = job;
           jobDescription = `${job.title}\n${job.description}`;
@@ -300,7 +316,11 @@ router.post(
 
             const hrUserEmail = req.user!.email;
             const hrUserId = req.user!._id;
-            autoScheduleInterview(application._id.toString(), hrUserId.toString(), hrUserEmail).catch(err => {
+            autoScheduleInterview(
+              application._id.toString(),
+              hrUserId.toString(),
+              hrUserEmail
+            ).catch((err) => {
               logger.error(`[Analyze] Auto-schedule error: ${err.message}`);
             });
           }
@@ -331,7 +351,7 @@ router.post(
         applicationId: application?._id || null,
         atsScore: ats,
         decision: application
-          ? (autoScreenEnabled && ats < atsCutoffScore)
+          ? autoScreenEnabled && ats < atsCutoffScore
             ? 'rejected'
             : 'under_review'
           : 'no_application',
@@ -367,7 +387,9 @@ router.get(
       let authorized = false;
       if (req.user!.role === 'candidate') {
         const candidate = await Candidate.findOne({ userId: req.user!._id });
-        authorized = Boolean(candidate && candidate._id.toString() === resume.candidateId.toString());
+        authorized = Boolean(
+          candidate && candidate._id.toString() === resume.candidateId.toString()
+        );
       } else if (req.user!.role === 'hr') {
         const hr = await Hr.findOne({ userId: req.user!._id });
         if (hr && hr.companyId) {

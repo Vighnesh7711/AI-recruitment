@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
-const MONGODB_URI = 'mongodb+srv://vighneshgawande_db_user:TO6OL8A3HOiSHYXm@cluster0.hu1fhvc.mongodb.net/?appName=Cluster0';
+const MONGODB_URI =
+  'mongodb+srv://vighneshgawande_db_user:TO6OL8A3HOiSHYXm@cluster0.hu1fhvc.mongodb.net/?appName=Cluster0';
 
 async function cleanup() {
   try {
@@ -8,7 +9,7 @@ async function cleanup() {
     console.log('Connected to MongoDB');
 
     const qRespCol = mongoose.connection.db.collection('question_responses');
-    
+
     // Find all question responses
     const allResponses = await qRespCol.find().toArray();
     console.log(`Total question response records: ${allResponses.length}`);
@@ -22,7 +23,9 @@ async function cleanup() {
       if (seen.has(key)) {
         // Delete this duplicate
         await qRespCol.deleteOne({ _id: qr._id });
-        console.log(`Deleted duplicate: Q${qr.questionOrder} (id=${qr._id}) for interview ${qr.interviewId}`);
+        console.log(
+          `Deleted duplicate: Q${qr.questionOrder} (id=${qr._id}) for interview ${qr.interviewId}`
+        );
         deleteCount++;
       } else {
         seen.add(key);
@@ -30,7 +33,7 @@ async function cleanup() {
     }
 
     console.log(`Cleanup complete. Deleted ${deleteCount} duplicate records.`);
-    
+
     await mongoose.disconnect();
   } catch (err) {
     console.error('Error during cleanup:', err);
