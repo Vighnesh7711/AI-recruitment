@@ -14,7 +14,6 @@ import logging
 import httpx
 import fitz  # PyMuPDF
 from google import genai
-from google.genai import types
 
 load_dotenv()
 
