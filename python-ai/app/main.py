@@ -320,6 +320,12 @@ async def evaluate_answer(body: EvaluateAnswerRequest):
                     detail={"error": {"code": "AI_ERROR", "message": f"Gemini API error: {str(e)}"}},
                 )
 
+    if response is None:
+        raise HTTPException(
+            status_code=502,
+            detail={"error": {"code": "AI_ERROR", "message": "Gemini API failed to evaluate answer: all retries exhausted (rate limit hit)."}},
+        )
+
     try:
         result_json = response.text or ""
         result = json.loads(result_json)
