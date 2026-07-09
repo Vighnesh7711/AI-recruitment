@@ -252,7 +252,7 @@ router.post(
         application.atsAnalysis = {
           overallScore: analyzeResult.ats_score,
           matchedSkills: analyzeResult.matched_skills,
-          missing_skills: analyzeResult.missing_skills, // Fixed naming mapping mismatch 
+          missingSkills: analyzeResult.missing_skills,
           experienceMatch: 0,
           educationMatch: 0,
           strengths: analyzeResult.strengths,

@@ -19,7 +19,7 @@ export interface IApplication extends Document {
   atsAnalysis?: {
     overallScore: number;
     matchedSkills: string[];
-    missing_skills: string[];
+    missingSkills: string[];
     experienceMatch: number;
     educationMatch: number;
     strengths: string[];
@@ -76,7 +76,7 @@ const ApplicationSchema = new Schema<IApplication>(
     atsAnalysis: {
       overallScore: Number,
       matchedSkills: [String],
-      missing_skills: [String],
+      missingSkills: [String],
       experienceMatch: Number,
       educationMatch: Number,
       strengths: [String],

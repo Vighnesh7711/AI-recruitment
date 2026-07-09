@@ -23,7 +23,7 @@ interface ApplicationItem {
   atsAnalysis?: {
     overallScore: number;
     matchedSkills: string[];
-    missing_skills: string[];
+    missingSkills: string[];
     experienceMatch: number;
     educationMatch: number;
     strengths: string[];
@@ -391,9 +391,9 @@ export function HRApplicationsDashboard() {
                     <h3 className="text-sm font-bold text-rose-400 mb-3 flex items-center gap-1.5">
                       <XCircle className="w-4 h-4" /> Missing Skills
                     </h3>
-                    {selectedApp.atsAnalysis.missing_skills?.length > 0 ? (
+                    {selectedApp.atsAnalysis.missingSkills?.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
-                        {selectedApp.atsAnalysis.missing_skills.map((sk) => (
+                        {selectedApp.atsAnalysis.missingSkills.map((sk) => (
                           <span key={sk} className="text-xs px-2.5 py-1 bg-rose-500/10 text-rose-400 rounded-md border border-rose-500/15">
                             {sk}
                           </span>
