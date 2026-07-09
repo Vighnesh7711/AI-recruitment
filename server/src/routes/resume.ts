@@ -142,11 +142,20 @@ router.post(
         );
       }
 
-      // 2. Find the application linked to this resume
-      const application = await Application.findOne({
-        candidateId: resume.candidateId,
-        resumeId: resume._id,
-      });
+      // 2. Find the application linked to this resume (preferring applicationId if provided to avoid cross-job data corruption)
+      const { applicationId } = req.body;
+      let application = null;
+      if (applicationId) {
+        application = await Application.findById(applicationId);
+        if (application && application.resumeId.toString() !== resume._id.toString()) {
+          throw new AppError('Resume does not match the application.', 400, 'BAD_REQUEST');
+        }
+      } else {
+        application = await Application.findOne({
+          candidateId: resume.candidateId,
+          resumeId: resume._id,
+        });
+      }
 
       // 3. Find the job posting to get description + required skills
       let jobDescription = '';
@@ -263,8 +272,12 @@ router.post(
       let atsCutoffScore = 60;
       if (application) {
         const job = await JobPosting.findById(application.jobId);
-        autoScreenEnabled = job?.autoScreenEnabled ?? false;
-        atsCutoffScore = job?.atsCutoffScore ?? 60;
+        autoScreenEnabled = application.autoScreenEnabled !== undefined 
+          ? application.autoScreenEnabled 
+          : (job?.autoScreenEnabled ?? false);
+        atsCutoffScore = application.atsCutoffScore !== undefined 
+          ? application.atsCutoffScore 
+          : (job?.atsCutoffScore ?? 60);
 
         // Denormalize scores onto the core application object for rendering
         application.atsScore = analyzeResult.ats_score;
@@ -301,6 +314,9 @@ router.post(
                       candidateName: candidate.name,
                       applicationId: application._id.toString(),
                       atsScore: analyzeResult.ats_score,
+                      weaknesses: analyzeResult.weaknesses || [],
+                      recommendations: analyzeResult.recommendations || [],
+                      rejectionReason: application.rejectionReason,
                     },
                     { timeout: 5000 }
                   );

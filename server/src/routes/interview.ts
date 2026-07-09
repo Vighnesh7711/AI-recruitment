@@ -558,7 +558,7 @@ router.get(
   }
 );
 
-// Helper function to generate 10 questions using Gemini or fallback
+// Helper function to generate 3 questions using Gemini or fallback
 async function generateQuestions(job: any): Promise<any[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -566,7 +566,7 @@ async function generateQuestions(job: any): Promise<any[]> {
     return generateFallbackQuestions(job);
   }
 
-  const prompt = `You are an expert HR interviewer. Generate exactly 10 interview questions for the job role: "${job.title}".
+  const prompt = `You are an expert HR interviewer. Generate exactly 3 interview questions for the job role: "${job.title}".
 Job Description: "${job.description}"
 Required Skills: ${(job.skillsRequired || []).join(', ')}
 
@@ -574,14 +574,13 @@ Provide questions across these categories:
 - technical: questions related to technical skills, coding, architecture, etc.
 - behavioral: questions starting with "Tell me about a time...", conflict resolution, leadership, etc.
 - situational: questions about hypothetical problem-solving scenarios.
-- culture_fit: questions evaluating alignment with company values, teamwork, growth mindset, etc.
 
 Return ONLY a valid JSON array of objects, with no markdown fences, no code blocks, no extra text:
 [
   {
     "questionId": "q1",
     "text": "The question content",
-    "category": "technical" | "behavioral" | "situational" | "culture_fit",
+    "category": "technical" | "behavioral" | "situational",
     "weight": 1
   },
   ...
@@ -599,7 +598,7 @@ Return ONLY a valid JSON array of objects, with no markdown fences, no code bloc
       .replace(/```/g, '')
       .trim();
     const questions = JSON.parse(text);
-    if (Array.isArray(questions) && questions.length === 10) {
+    if (Array.isArray(questions) && questions.length === 3) {
       return questions.map((q, idx) => ({
         questionId: q.questionId || `q_${idx + 1}`,
         text: q.text,
@@ -633,48 +632,6 @@ function generateFallbackQuestions(job: any): any[] {
     },
     {
       questionId: 'q3',
-      text: `Tell me about a challenging technical project you worked on recently. What was your role and how did you overcome the difficulties?`,
-      category: 'behavioral',
-      weight: 1,
-    },
-    {
-      questionId: 'q4',
-      text: `How do you approach learning new technologies or frameworks when starting a new project?`,
-      category: 'culture_fit',
-      weight: 1,
-    },
-    {
-      questionId: 'q5',
-      text: `Imagine you are asked to design a scalable feature but face conflicting requirements from stakeholders. How do you resolve this?`,
-      category: 'situational',
-      weight: 1,
-    },
-    {
-      questionId: 'q6',
-      text: `Describe a situation where you had to debug a complex production issue under time pressure. What steps did you take?`,
-      category: 'behavioral',
-      weight: 1,
-    },
-    {
-      questionId: 'q7',
-      text: `How do you ensure the quality of your code, and what is your experience with writing tests and performing code reviews?`,
-      category: 'technical',
-      weight: 1,
-    },
-    {
-      questionId: 'q8',
-      text: `If you noticed a team member was falling behind on their deliverables, how would you approach them?`,
-      category: 'situational',
-      weight: 1,
-    },
-    {
-      questionId: 'q9',
-      text: `What motivates you to perform your best work, and how do you align with the goals of this position?`,
-      category: 'culture_fit',
-      weight: 1,
-    },
-    {
-      questionId: 'q10',
       text: `Finally, what questions do you have for us, or is there anything else you'd like to share about your candidacy?`,
       category: 'culture_fit',
       weight: 1,

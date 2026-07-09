@@ -27,6 +27,8 @@ export interface IApplication extends Document {
     recommendations: string[];
   };
   rejectionReason?: string;
+  autoScreenEnabled?: boolean;
+  atsCutoffScore?: number;
 }
 
 const ApplicationSchema = new Schema<IApplication>(
@@ -85,6 +87,12 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     rejectionReason: {
       type: String,
+    },
+    autoScreenEnabled: {
+      type: Boolean,
+    },
+    atsCutoffScore: {
+      type: Number,
     },
   },
   {

@@ -9,6 +9,8 @@ import {
   Candidate,
   Hr,
   ResumeAnalysis,
+  Interview,
+  InterviewEvaluation,
 } from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
@@ -199,38 +201,68 @@ router.get(
         .populate('resumeId')
         .sort({ appliedOn: -1 });
 
-      const response = applications.map((app: any) => {
-        const cand = app.candidateId;
-        const userObj = cand?.userId;
-        const job = app.jobId;
-        const resume = app.resumeId;
+      const response = await Promise.all(
+        applications.map(async (app: any) => {
+          const cand = app.candidateId;
+          const userObj = cand?.userId;
+          const job = app.jobId;
+          const resume = app.resumeId;
 
-        return {
-          _id: app._id,
-          status: app.status,
-          atsScore: app.atsScore,
-          atsAnalysis: app.atsAnalysis,
-          resumeId: resume ? resume._id : '',
-          resumePath: resume ? resume.resumeUrl : '',
-          createdAt: app.appliedOn,
-          candidateId: cand
-            ? {
-                _id: cand._id,
-                fullName: cand.name,
-                email: userObj ? userObj.email : '',
-                profilePicture: cand.profilePicture || '',
-              }
-            : null,
-          jobId: job
-            ? {
-                _id: job._id,
-                title: job.title,
-                autoScreenEnabled: job.autoScreenEnabled || false,
-                atsCutoffScore: job.atsCutoffScore || 60,
-              }
-            : null,
-        };
-      });
+          // Fetch associated interview & evaluation
+          const interview = await Interview.findOne({ applicationId: app._id });
+          let evaluation = null;
+          if (interview) {
+            evaluation = await InterviewEvaluation.findOne({ interviewId: interview._id });
+          }
+
+          return {
+            _id: app._id,
+            status: app.status,
+            atsScore: app.atsScore,
+            atsAnalysis: app.atsAnalysis,
+            resumeId: resume ? resume._id : '',
+            resumePath: resume ? resume.resumeUrl : '',
+            createdAt: app.appliedOn,
+            candidateId: cand
+              ? {
+                  _id: cand._id,
+                  fullName: cand.name,
+                  email: userObj ? userObj.email : '',
+                  profilePicture: cand.profilePicture || '',
+                }
+              : null,
+            jobId: job
+              ? {
+                  _id: job._id,
+                  title: job.title,
+                  autoScreenEnabled: app.autoScreenEnabled !== undefined ? app.autoScreenEnabled : (job.autoScreenEnabled || false),
+                  atsCutoffScore: app.atsCutoffScore !== undefined ? app.atsCutoffScore : (job.atsCutoffScore || 60),
+                }
+              : null,
+            interview: interview
+              ? {
+                  _id: interview._id,
+                  status: interview.result,
+                  overallScore: interview.overallScore,
+                  result: interview.result,
+                }
+              : null,
+            evaluation: evaluation
+              ? {
+                  technicalScore: evaluation.technicalScore,
+                  communicationScore: evaluation.communicationScore,
+                  confidenceScore: evaluation.confidenceScore,
+                  grammarScore: evaluation.grammarScore,
+                  problemSolvingScore: evaluation.problemSolvingScore,
+                  behavioralScore: evaluation.behavioralScore,
+                  overallScore: evaluation.overallScore,
+                  recommendation: evaluation.recommendation,
+                  feedback: evaluation.feedback,
+                }
+              : null,
+          };
+        })
+      );
 
       res.json(response);
     } catch (error) {
@@ -433,6 +465,8 @@ router.patch(
                   candidateName: candidate.name,
                   applicationId: application._id.toString(),
                   atsScore: application.atsScore || 0,
+                  weaknesses: application.atsAnalysis?.weaknesses || [],
+                  recommendations: application.atsAnalysis?.recommendations || [],
                   rejectionReason:
                     rejectionReason || application.rejectionReason || 'Manually rejected by HR.',
                 },
@@ -456,6 +490,39 @@ router.patch(
             logger.error(`[Application] Auto-schedule error: ${err.message}`);
           }
         );
+      }
+
+      if (status === 'hired') {
+        const webhookUrl = process.env.N8N_WEBHOOK_OFFER;
+        if (webhookUrl) {
+          try {
+            const candidate = await Candidate.findById(application.candidateId).populate('userId');
+            if (candidate) {
+              const userObj: any = candidate.userId;
+              let companyName = 'Our Company';
+              if (job.companyId) {
+                const company = await Company.findById(job.companyId);
+                if (company) {
+                  companyName = company.companyName;
+                }
+              }
+              await axios.post(
+                webhookUrl,
+                {
+                  candidateId: candidate._id.toString(),
+                  candidateEmail: userObj ? userObj.email : '',
+                  candidateName: candidate.name,
+                  jobTitle: job.title,
+                  companyName,
+                },
+                { timeout: 5000 }
+              );
+              logger.info(`[Application] N8N offer webhook fired for application ${application._id}`);
+            }
+          } catch (err: any) {
+            logger.warn(`[Application] N8N offer webhook failed to fire: ${err.message}`);
+          }
+        }
       }
 
       res.json({
@@ -549,6 +616,37 @@ router.post(
 
       res.json({
         message: 'Offer sent and application status updated to selected.',
+        application,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /application/:id/auto-screen
+ * Body: { autoScreenEnabled }
+ */
+router.patch(
+  '/:id/auto-screen',
+  requireAuth,
+  requireRole('hr'),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { autoScreenEnabled } = req.body;
+
+      const application = await Application.findById(id);
+      if (!application) {
+        throw new AppError('Application not found.', 404, 'NOT_FOUND');
+      }
+
+      application.autoScreenEnabled = autoScreenEnabled === true;
+      await application.save();
+
+      res.json({
+        message: 'Application auto-screen setting updated successfully.',
         application,
       });
     } catch (error) {

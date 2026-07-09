@@ -229,8 +229,8 @@ export function CompanySetup() {
                     />
                   </div>
                 )}
-                <div className="flex-1">
-                  <div className="max-w-lg flex justify-center px-6 pt-5 pb-6 border-2 border-slate-800 border-dashed rounded-xl hover:border-indigo-500/50 transition-colors cursor-pointer relative bg-slate-950/50">
+                <div className="flex-1 w-full">
+                  <div className="w-full flex justify-center px-6 pt-5 pb-6 border-2 border-slate-800 border-dashed rounded-xl hover:border-indigo-500/50 transition-colors cursor-pointer relative bg-slate-950/50">
                     <div className="space-y-1 text-center">
                       <Upload className="mx-auto h-8 w-8 text-slate-500" />
                       <div className="flex text-sm text-slate-400">

@@ -15,6 +15,7 @@ import { CandidateInterview } from './pages/CandidateInterview';
 import { HRInterviews } from './pages/HRInterviews';
 import { HRApplicationsDashboard } from './pages/HRApplicationsDashboard';
 import { Profile } from './pages/Profile';
+import { VerifyEmail } from './pages/VerifyEmail';
 import { getSessionUser } from './lib/api';
 import './App.css';
 
@@ -61,7 +62,8 @@ function App() {
     <BrowserRouter>
       <div
         key={sessionKey}
-        className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans"
+        className="min-h-screen flex flex-col font-sans"
+        style={{ backgroundColor: '#ffffff', color: '#12261c' }}
       >
         <Navbar onAuthChange={handleAuthChange} />
 
@@ -73,6 +75,7 @@ function App() {
             {/* Authentication routes */}
             <Route path="/login" element={<Login onAuthChange={handleAuthChange} />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* Shared profile route (any authenticated user) */}
             <Route

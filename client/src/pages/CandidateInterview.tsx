@@ -178,6 +178,7 @@ export function CandidateInterview() {
 
   // Start microphone recording (manually triggered by the button)
   const startRecording = async () => {
+    setError('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -222,6 +223,7 @@ export function CandidateInterview() {
   // Submit text answer (text mode)
   const handleSubmitTextAnswer = async () => {
     if (!textAnswer.trim()) return;
+    setError('');
     setPhase('processing');
     const answerText = textAnswer.trim();
     setTextAnswer('');
@@ -250,12 +252,13 @@ export function CandidateInterview() {
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Failed to process answer.';
       setError(msg);
-      setPhase('error');
+      setPhase('listening');
     }
   };
 
   // Stop recording & submit audio answer (voice mode)
   const handleSubmitAudioAnswer = async () => {
+    setError('');
     setPhase('processing');
     stopRecording();
 
@@ -304,7 +307,7 @@ export function CandidateInterview() {
       } catch (err: any) {
         const msg = err.response?.data?.error?.message || 'Failed to process answer.';
         setError(msg);
-        setPhase('error');
+        setPhase('listening');
       }
     };
     reader.readAsDataURL(blob);
@@ -702,6 +705,16 @@ export function CandidateInterview() {
 
           {/* Input & Microphone Interactive Panel */}
           <div className="space-y-4">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
             {/* TEXT MODE */}
             {mode === 'text' && phase === 'listening' && (
               <motion.div

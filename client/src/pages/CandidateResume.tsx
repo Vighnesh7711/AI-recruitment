@@ -139,9 +139,8 @@ export function CandidateResume() {
           </div>
         )}
 
-        {/* Dropzone & Progress */}
         <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-900 rounded-2xl p-6 sm:p-8 shadow-2xl mb-8">
-          <div className="max-w-xl mx-auto">
+          <div className="w-full">
             <div className="border-2 border-slate-800 border-dashed rounded-xl hover:border-indigo-500/50 transition-colors cursor-pointer relative bg-slate-950/40 py-8 px-4 flex flex-col items-center justify-center">
               <Upload className="h-10 w-10 text-slate-500 mb-3" />
               <div className="flex text-sm text-slate-400 text-center flex-col sm:flex-row sm:gap-1">

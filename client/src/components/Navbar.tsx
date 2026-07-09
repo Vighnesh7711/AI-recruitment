@@ -44,22 +44,47 @@ export function Navbar({ onAuthChange }: NavbarProps) {
   };
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md bg-slate-950/60 border-b border-slate-900 px-6 py-4 flex items-center justify-between">
+    <nav
+      className="sticky top-0 z-50 px-6 flex items-center justify-between"
+      style={{
+        backgroundColor: '#1b3b2c',
+        height: '72px',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
       <div className="flex items-center gap-3">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <Briefcase className="w-5 h-5 text-white" />
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div
+            className="w-9 h-9 flex items-center justify-center transition-transform duration-200 group-hover:scale-105"
+            style={{
+              backgroundColor: '#c8f24c',
+              borderRadius: '12px',
+            }}
+          >
+            <Briefcase className="w-5 h-5" style={{ color: '#12261c' }} />
           </div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
+          <span
+            className="text-xl font-extrabold tracking-tight"
+            style={{
+              fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+              color: '#ffffff',
+            }}
+          >
             AuraRecruit
           </span>
         </Link>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-5">
         <Link
           to="/"
-          className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+          className="text-[15px] font-medium transition-colors"
+          style={{
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            color: 'rgba(255,255,255,0.75)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
         >
           Explore Careers
         </Link>
@@ -70,28 +95,52 @@ export function Navbar({ onAuthChange }: NavbarProps) {
               <>
                 <Link
                   to="/hr/jobs"
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[15px] font-medium transition-colors"
+                  style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   Manage Jobs
                 </Link>
                 <Link
                   to="/hr/applications"
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[15px] font-medium transition-colors"
+                  style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                 >
                   <FileText className="w-4 h-4" />
                   Applications
                 </Link>
                 <Link
                   to="/hr/company-setup"
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[15px] font-medium transition-colors"
+                  style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                 >
                   <Building className="w-4 h-4" />
                   Company Setup
                 </Link>
                 <Link
                   to="/hr/interviews"
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[15px] font-medium transition-colors"
+                  style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                 >
                   <Briefcase className="w-4 h-4" />
                   Interviews
@@ -103,21 +152,39 @@ export function Navbar({ onAuthChange }: NavbarProps) {
               <>
                 <Link
                   to="/candidate/jobs"
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[15px] font-medium transition-colors"
+                  style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                 >
                   <Briefcase className="w-4 h-4" />
                   Browse Jobs
                 </Link>
                 <Link
                   to="/candidate/resume"
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[15px] font-medium transition-colors"
+                  style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                 >
                   <FileText className="w-4 h-4" />
                   My Resume
                 </Link>
                 <Link
                   to="/candidate/applications"
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[15px] font-medium transition-colors"
+                  style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   My Applications
@@ -125,35 +192,78 @@ export function Navbar({ onAuthChange }: NavbarProps) {
               </>
             )}
 
-            <div className="h-4 w-px bg-slate-800" />
+            <div className="h-5 w-px" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} />
 
             <div className="flex items-center gap-3">
               <Link
                 to="/profile"
                 title="View profile"
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500/40 hover:bg-slate-800/80 text-slate-200 transition-all"
+                className="flex items-center gap-2 px-3 py-1.5 transition-all"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '9999px',
+                  color: '#ffffff',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.14)';
+                  e.currentTarget.style.borderColor = 'rgba(200,242,76,0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                }}
               >
                 {profilePicture ? (
                   <img
                     src={profilePicture}
                     alt="Profile"
-                    className="w-6 h-6 rounded-full object-cover border border-slate-700"
+                    className="w-6 h-6 rounded-full object-cover"
+                    style={{ border: '1.5px solid rgba(255,255,255,0.2)' }}
                   />
                 ) : (
-                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-[11px] font-bold text-indigo-300">
+                  <span
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold"
+                    style={{
+                      backgroundColor: 'rgba(200,242,76,0.2)',
+                      border: '1.5px solid rgba(200,242,76,0.3)',
+                      color: '#c8f24c',
+                    }}
+                  >
                     {(profileName || user.email).charAt(0).toUpperCase()}
                   </span>
                 )}
-                <span className="text-xs font-semibold text-slate-200 max-w-[120px] truncate">
+                <span className="text-xs font-semibold max-w-[120px] truncate" style={{ color: '#ffffff' }}>
                   {profileName || user.email}
                 </span>
-                <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 border-l border-slate-700 pl-2">
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wider pl-2"
+                  style={{
+                    color: '#c8f24c',
+                    borderLeft: '1px solid rgba(255,255,255,0.15)',
+                  }}
+                >
                   {user.role}
                 </span>
               </Link>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-all"
+                style={{
+                  borderRadius: '9999px',
+                  color: 'rgba(255,255,255,0.6)',
+                  border: '1px solid transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#f87171';
+                  e.currentTarget.style.backgroundColor = 'rgba(248,113,113,0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(248,113,113,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = 'transparent';
+                }}
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out
@@ -164,13 +274,20 @@ export function Navbar({ onAuthChange }: NavbarProps) {
           <>
             <Link
               to="/login"
-              className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+              className="text-[15px] font-medium transition-colors"
+              style={{
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                color: 'rgba(255,255,255,0.75)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
             >
               Sign In
             </Link>
             <Link
               to="/register"
-              className="px-4 py-2 rounded-xl bg-white text-slate-950 font-medium hover:bg-slate-200 transition-colors shadow-lg shadow-white/5"
+              className="btn-accent"
+              style={{ textDecoration: 'none' }}
             >
               Get Started
             </Link>

@@ -40,20 +40,25 @@ export function Login({ onAuthChange }: LoginProps) {
   };
 
   return (
-    <div className="min-h-[calc(100vh-76px)] bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background glow effects */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
-
+    <div
+      className="flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden"
+      style={{ minHeight: 'calc(100vh - 72px)', backgroundColor: '#eef8df' }}
+    >
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <h2 className="text-center text-3xl font-extrabold text-white tracking-tight">
+        <h2
+          className="text-center text-display-md"
+          style={{ color: '#12261c' }}
+        >
           Welcome back
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
+        <p className="mt-2 text-center text-sm" style={{ color: '#4f5f54' }}>
           Or{' '}
           <Link
             to="/register"
-            className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="font-semibold transition-colors"
+            style={{ color: '#1b3b2c' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#c8f24c')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#1b3b2c')}
           >
             create a new account
           </Link>
@@ -61,22 +66,38 @@ export function Login({ onAuthChange }: LoginProps) {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
-        <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 rounded-2xl py-8 px-6 sm:px-10 shadow-2xl shadow-black/40">
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            border: '1px solid #cddcc9',
+            borderRadius: '20px',
+            padding: '32px 40px',
+            boxShadow: '0 8px 30px rgba(27,59,44,0.08)',
+          }}
+        >
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <div className="text-sm text-red-200">{error}</div>
+              <div
+                className="flex items-start gap-3"
+                style={{
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(239,68,68,0.06)',
+                  border: '1px solid rgba(239,68,68,0.15)',
+                  padding: '16px',
+                }}
+              >
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#dc2626' }} />
+                <div className="text-sm" style={{ color: '#dc2626' }}>{error}</div>
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300">
+              <label htmlFor="email" className="block text-sm font-medium" style={{ color: '#2b3d33' }}>
                 Email address
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-500" />
+                  <Mail className="h-5 w-5" style={{ color: '#8a9a8e' }} />
                 </div>
                 <input
                   id="email"
@@ -85,19 +106,29 @@ export function Login({ onAuthChange }: LoginProps) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                  style={{
+                    width: '100%',
+                    paddingLeft: '40px',
+                    padding: '10px 12px 10px 40px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e3eae0',
+                    borderRadius: '12px',
+                    color: '#12261c',
+                    fontSize: '14px',
+                    outline: 'none',
+                  }}
                   placeholder="name@company.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300">
+              <label htmlFor="password" className="block text-sm font-medium" style={{ color: '#2b3d33' }}>
                 Password
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500" />
+                  <Lock className="h-5 w-5" style={{ color: '#8a9a8e' }} />
                 </div>
                 <input
                   id="password"
@@ -106,7 +137,16 @@ export function Login({ onAuthChange }: LoginProps) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px 10px 40px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e3eae0',
+                    borderRadius: '12px',
+                    color: '#12261c',
+                    fontSize: '14px',
+                    outline: 'none',
+                  }}
                   placeholder="••••••••"
                 />
               </div>
@@ -118,9 +158,9 @@ export function Login({ onAuthChange }: LoginProps) {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-800 rounded bg-slate-950"
+                  style={{ width: 16, height: 16, accentColor: '#1b3b2c', borderRadius: '4px' }}
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-400">
+                <label htmlFor="remember-me" className="ml-2 block text-sm" style={{ color: '#4f5f54' }}>
                   Remember me
                 </label>
               </div>
@@ -128,7 +168,10 @@ export function Login({ onAuthChange }: LoginProps) {
               <div className="text-sm">
                 <a
                   href="#"
-                  className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="font-semibold transition-colors"
+                  style={{ color: '#1b3b2c' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#244d3a')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#1b3b2c')}
                 >
                   Forgot password?
                 </a>
@@ -139,10 +182,14 @@ export function Login({ onAuthChange }: LoginProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ width: '100%' }}
               >
                 {loading ? (
-                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span
+                    className="w-5 h-5 rounded-full animate-spin"
+                    style={{ border: '2px solid rgba(18,38,28,0.3)', borderTopColor: '#12261c' }}
+                  />
                 ) : (
                   <>
                     <LogIn className="w-5 h-5" />

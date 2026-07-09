@@ -51,6 +51,8 @@ interface ApplicationItem {
   resumeId?: string;
   resumePath?: string;
   createdAt: string;
+  autoScreenEnabled?: boolean;
+  atsCutoffScore?: number;
   candidateId: {
     _id: string;
     fullName: string;
@@ -63,6 +65,23 @@ interface ApplicationItem {
     autoScreenEnabled: boolean;
     atsCutoffScore: number;
   };
+  interview?: {
+    _id: string;
+    status: string;
+    overallScore?: number;
+    result?: string;
+  } | null;
+  evaluation?: {
+    technicalScore?: number;
+    communicationScore?: number;
+    confidenceScore?: number;
+    grammarScore?: number;
+    problemSolvingScore?: number;
+    behavioralScore?: number;
+    overallScore?: number;
+    recommendation?: string;
+    feedback?: string;
+  } | null;
 }
 
 export function HRApplicationsDashboard() {
@@ -120,8 +139,10 @@ export function HRApplicationsDashboard() {
       setApplications((prev) =>
         prev.map((item) => (item._id === appId ? { ...item, status: nextStatus } : item))
       );
-    } catch (err) {
-      alert('Failed updating application operational state milestones.');
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err.response?.data?.error?.message || err.message || 'Failed updating application operational state milestones.';
+      alert(errMsg);
     } finally {
       setProcessingId(null);
     }
@@ -131,7 +152,7 @@ export function HRApplicationsDashboard() {
     if (!resumeId) return alert('No explicit valid resume resource linked.');
     setProcessingId(appId);
     try {
-      await api.post(`/resume/${resumeId}/analyze`);
+      await api.post(`/resume/${resumeId}/analyze`, { applicationId: appId });
       await loadApplications(); // Refresh fresh state data
     } catch (err) {
       alert('AI Processing request error encountered.');
@@ -140,13 +161,12 @@ export function HRApplicationsDashboard() {
     }
   };
 
-  const toggleJobAutoScreen = async (jobId: string, currentSetting: boolean) => {
+  const toggleApplicationAutoScreen = async (appId: string, currentSetting: boolean) => {
     try {
-      // Modifies target operational flag state configuration parameters at runtime
-      await api.patch(`/jobs/${jobId}/status`, { autoScreenEnabled: !currentSetting });
+      await api.patch(`/application/${appId}/auto-screen`, { autoScreenEnabled: !currentSetting });
       loadApplications();
     } catch (err) {
-      alert('Failed updating job threshold tracking parameter.');
+      alert('Failed updating candidate auto-screen parameter.');
     }
   };
 
@@ -260,41 +280,63 @@ export function HRApplicationsDashboard() {
                             {app.jobId?.title}
                           </div>
                           <button
-                            onClick={() =>
-                              toggleJobAutoScreen(app.jobId?._id, app.jobId?.autoScreenEnabled)
-                            }
+                            onClick={() => {
+                              const isEnabled = app.autoScreenEnabled !== undefined ? app.autoScreenEnabled : app.jobId?.autoScreenEnabled;
+                              toggleApplicationAutoScreen(app._id, isEnabled);
+                            }}
                             className={`mt-2 text-[10px] flex items-center gap-1 font-mono uppercase px-2 py-1 rounded-md border transition-all ${
-                              app.jobId?.autoScreenEnabled
+                              (app.autoScreenEnabled !== undefined ? app.autoScreenEnabled : app.jobId?.autoScreenEnabled)
                                 ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
                                 : 'bg-slate-800/80 border-slate-700/80 text-slate-400 hover:bg-slate-700/80'
                             }`}
                           >
                             <ShieldAlert className="w-3 h-3" />
                             Auto-Screen:{' '}
-                            {app.jobId?.autoScreenEnabled ? 'ON (Auto-Gate)' : 'OFF (Manual)'}
+                            {(app.autoScreenEnabled !== undefined ? app.autoScreenEnabled : app.jobId?.autoScreenEnabled) ? 'ON (Auto-Gate)' : 'OFF (Manual)'}
                           </button>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         {app.atsScore !== undefined ? (
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-xs font-black px-2.5 py-1 rounded-lg border transition-all ${
-                                app.atsScore >= 75
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                  : app.atsScore >= 60
-                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                    : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                              }`}
-                            >
-                              {app.atsScore} / 100
-                            </span>
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">ATS Match:</span>
+                              <span
+                                className={`text-xs font-black px-2.5 py-1 rounded-lg border transition-all ${
+                                  app.atsScore >= 75
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : app.atsScore >= 60
+                                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                }`}
+                              >
+                                {app.atsScore} / 100
+                              </span>
+                            </div>
+
+                            {app.interview && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Interview:</span>
+                                <span
+                                  className={`text-xs font-black px-2 py-0.5 rounded border transition-all ${
+                                    (app.interview.overallScore || 0) >= 75
+                                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                      : (app.interview.overallScore || 0) >= 60
+                                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                        : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                  }`}
+                                >
+                                  {app.interview.overallScore !== undefined ? `${app.interview.overallScore} / 100` : 'Pending'}
+                                </span>
+                              </div>
+                            )}
+
                             <button
                               onClick={() => setSelectedApp(app)}
-                              className="p-1 hover:bg-slate-800 rounded-md text-indigo-400 hover:text-indigo-300 transition-all flex items-center gap-1 text-[11px]"
+                              className="p-1 hover:bg-slate-800 rounded-md text-indigo-400 hover:text-indigo-300 transition-all flex items-center gap-1 text-[11px] w-fit mt-0.5"
                               title="View AI Details"
                             >
-                              <Eye className="w-3.5 h-3.5" /> Details
+                              <Eye className="w-3.5 h-3.5" /> Details & Interview Analysis
                             </button>
                           </div>
                         ) : (
@@ -319,31 +361,64 @@ export function HRApplicationsDashboard() {
                                   ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
                                   : app.status === 'interview_scheduled'
                                     ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                                    : app.status === 'interviewed'
+                                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                      : app.status === 'hired'
+                                        ? 'bg-teal-500/10 text-teal-400 border-teal-500/20'
+                                        : 'bg-slate-800 text-slate-400 border-slate-700'
                           }`}
                         >
                           {app.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => handleManualStatusChange(app._id, 'shortlisted')}
-                          disabled={
-                            processingId === app._id ||
-                            app.status === 'shortlisted' ||
-                            app.status === 'interview_scheduled'
-                          }
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 disabled:opacity-40 transition-all duration-200"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" /> Shortlist
-                        </button>
-                        <button
-                          onClick={() => handleManualStatusChange(app._id, 'rejected')}
-                          disabled={processingId === app._id || app.status === 'rejected'}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 disabled:opacity-40 transition-all duration-200"
-                        >
-                          <XCircle className="w-3.5 h-3.5" /> Reject
-                        </button>
+                        {app.status === 'interviewed' ? (
+                          <>
+                            <button
+                              onClick={() => handleManualStatusChange(app._id, 'hired')}
+                              disabled={processingId === app._id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20 disabled:opacity-40 transition-all duration-200 cursor-pointer"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" /> Hire Candidate
+                            </button>
+                            <button
+                              onClick={() => handleManualStatusChange(app._id, 'rejected')}
+                              disabled={processingId === app._id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 disabled:opacity-40 transition-all duration-200 cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Reject
+                            </button>
+                          </>
+                        ) : app.status === 'hired' ? (
+                          <span className="text-xs font-bold text-teal-400 flex items-center justify-end gap-1">
+                            <CheckCircle className="w-4 h-4" /> Hired
+                          </span>
+                        ) : app.status === 'rejected' ? (
+                          <span className="text-xs font-bold text-rose-400 flex items-center justify-end gap-1">
+                            <XCircle className="w-4 h-4" /> Rejected
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleManualStatusChange(app._id, 'shortlisted')}
+                              disabled={
+                                processingId === app._id ||
+                                app.status === 'shortlisted' ||
+                                app.status === 'interview_scheduled'
+                              }
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 disabled:opacity-40 transition-all duration-200 cursor-pointer"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" /> Shortlist
+                            </button>
+                            <button
+                              onClick={() => handleManualStatusChange(app._id, 'rejected')}
+                              disabled={processingId === app._id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 disabled:opacity-40 transition-all duration-200 cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Reject
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );
@@ -519,6 +594,103 @@ export function HRApplicationsDashboard() {
                       <li className="text-xs text-slate-500 italic">No recommendations listed.</li>
                     )}
                   </ul>
+                </div>
+              </div>
+            )}
+
+            {/* AI Interview Evaluation Report card if interview exists */}
+            {selectedApp.interview && (
+              <div className="bg-slate-950/50 rounded-xl p-6 border border-slate-800/80 mt-6 space-y-5">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-400" />
+                  AI Interview Evaluation Report
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-slate-900/40 rounded-xl p-4 border border-slate-800">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                      Overall Interview Score
+                    </span>
+                    <div className="text-3xl font-extrabold text-white flex items-baseline gap-1">
+                      {selectedApp.interview.overallScore !== undefined ? selectedApp.interview.overallScore : 'N/A'}{' '}
+                      <span className="text-sm font-medium text-slate-500">/ 100</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/40 rounded-xl p-4 border border-slate-800">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                      AI Recommendation
+                    </span>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                      selectedApp.evaluation?.recommendation?.includes('strong_hire') || selectedApp.evaluation?.recommendation?.includes('hire')
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : selectedApp.evaluation?.recommendation?.includes('maybe')
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    }`}>
+                      {selectedApp.evaluation?.recommendation ? selectedApp.evaluation.recommendation.toUpperCase().replace('_', ' ') : 'PENDING'}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedApp.evaluation && (
+                  <>
+                    {/* Individual Skills Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { label: 'Technical Skills', score: selectedApp.evaluation.technicalScore },
+                        { label: 'Communication', score: selectedApp.evaluation.communicationScore },
+                        { label: 'Confidence', score: selectedApp.evaluation.confidenceScore },
+                        { label: 'Grammar', score: selectedApp.evaluation.grammarScore },
+                        { label: 'Problem Solving', score: selectedApp.evaluation.problemSolvingScore },
+                        { label: 'Behavioral', score: selectedApp.evaluation.behavioralScore },
+                      ].map((item) => (
+                        <div key={item.label} className="bg-slate-900/20 p-3 rounded-lg border border-slate-800/60">
+                          <span className="text-[10px] font-medium text-slate-400 block mb-1">{item.label}</span>
+                          <div className="text-lg font-bold text-white">{item.score !== undefined ? `${item.score} / 100` : 'N/A'}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* AI Feedback */}
+                    <div className="bg-slate-900/30 rounded-xl p-4 border border-slate-800/60">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block mb-2">
+                        Detailed AI Recruiter Feedback
+                      </span>
+                      <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                        {selectedApp.evaluation.feedback}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Decision Controls in Drawer */}
+            {selectedApp.status === 'interviewed' && (
+              <div className="bg-slate-950/50 rounded-xl p-6 border border-slate-800/80 mt-6 flex flex-col gap-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Take Hiring Decision
+                </h4>
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      await handleManualStatusChange(selectedApp._id, 'hired');
+                      setSelectedApp({ ...selectedApp, status: 'hired' });
+                    }}
+                    className="flex-1 py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-xs transition-all shadow cursor-pointer"
+                  >
+                    Hire Candidate
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleManualStatusChange(selectedApp._id, 'rejected');
+                      setSelectedApp({ ...selectedApp, status: 'rejected' });
+                    }}
+                    className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition-all shadow cursor-pointer"
+                  >
+                    Reject Candidate
+                  </button>
                 </div>
               </div>
             )}

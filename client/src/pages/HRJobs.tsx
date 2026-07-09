@@ -156,7 +156,7 @@ export function HRJobs() {
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
 
-      <div className="max-w-6xl mx-auto relative z-10">
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
@@ -207,25 +207,25 @@ export function HRJobs() {
             <table className="min-w-full divide-y divide-slate-800">
               <thead className="bg-slate-950/80">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3.5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Job Title
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3.5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Domain
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3.5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Experience
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3.5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3.5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Auto-Screening
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3.5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Applicants
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3.5 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -233,20 +233,20 @@ export function HRJobs() {
               <tbody className="divide-y divide-slate-800 bg-slate-900/10">
                 {jobs.map((job) => (
                   <tr key={job._id} className="hover:bg-slate-800/10 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       <div className="text-sm font-semibold text-white">{job.title}</div>
                       <div className="text-xs text-slate-500">
                         Posted {new Date(job.createdAt).toLocaleDateString()}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                    <td className="px-3.5 py-3 whitespace-nowrap text-sm text-slate-300">
                       {job.domain}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 capitalize">
+                    <td className="px-3.5 py-3 whitespace-nowrap text-sm text-slate-300 capitalize">
                       {job.experience}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{renderStatusBadge(job.status)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 py-3 whitespace-nowrap">{renderStatusBadge(job.status)}</td>
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       <div className="flex flex-col gap-1.5 justify-center">
                         <label className="inline-flex items-center gap-2 cursor-pointer">
                           <input
@@ -287,10 +287,10 @@ export function HRJobs() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                    <td className="px-3.5 py-3 whitespace-nowrap text-sm text-slate-300">
                       {job.applicationCount || 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <td className="px-3.5 py-3 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       {/* Toggle status */}
                       <button
                         onClick={() => handleToggleStatus(job._id, job.status)}
