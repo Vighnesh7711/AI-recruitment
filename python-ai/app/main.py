@@ -11,6 +11,7 @@ import os
 import json
 import re
 import logging
+import asyncio
 import httpx
 import fitz  # PyMuPDF
 from google import genai
@@ -310,8 +311,7 @@ async def evaluate_answer(body: EvaluateAnswerRequest):
         except Exception as e:
             if "429" in str(e) and i < retries - 1:
                 logger.warning(f"Gemini API rate limit (429) hit during evaluation. Retrying in {delay}s...")
-                import time
-                time.sleep(delay)
+                await asyncio.sleep(delay)
                 delay *= 2.0
             else:
                 logger.error(f"Gemini API call failed: {e}")
