@@ -135,14 +135,6 @@ def _extract_sections(text: str) -> dict:
     return sections
 
 
-def _strip_fences(raw: str) -> str:
-    """Strip markdown code fences from LLM output."""
-    cleaned = raw.strip()
-    # Remove ```json ... ``` or ``` ... ```
-    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned)
-    cleaned = re.sub(r"\n?```\s*$", "", cleaned)
-    return cleaned.strip()
-
 
 # ── Health Check ──
 
