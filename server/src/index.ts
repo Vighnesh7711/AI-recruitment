@@ -13,6 +13,7 @@ import resumeRouter from './routes/resume';
 import applicationRouter from './routes/application';
 import interviewRouter from './routes/interview';
 import profileRouter from './routes/profile';
+import notificationRouter from './routes/notification';
 import { startScheduler } from './scheduler';
 import { errorHandler } from './utils/errors';
 
@@ -65,6 +66,7 @@ app.use('/api/resume', resumeRouter);
 app.use('/api/application', applicationRouter);
 app.use('/api/interview', interviewRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/notifications', notificationRouter);
 
 // ── Health Check ──
 app.get('/health', (_req, res) => {

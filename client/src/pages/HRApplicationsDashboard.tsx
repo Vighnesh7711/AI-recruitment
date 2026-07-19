@@ -18,7 +18,9 @@ import {
   GraduationCap,
   Code2 as Github,
   Link as Linkedin,
+  MessageSquare,
 } from 'lucide-react';
+
 
 interface CandidateProfile {
   _id: string;
@@ -70,7 +72,15 @@ interface ApplicationItem {
     status: string;
     overallScore?: number;
     result?: string;
+    questions?: Array<{
+      questionId: string;
+      text: string;
+      candidateAnswer: string;
+      aiScore: number;
+      aiFeedback: string;
+    }>;
   } | null;
+
   evaluation?: {
     technicalScore?: number;
     communicationScore?: number;
@@ -661,10 +671,40 @@ export function HRApplicationsDashboard() {
                         {selectedApp.evaluation.feedback}
                       </p>
                     </div>
+
+                    {/* Q&A Transcript Breakdown */}
+                    {selectedApp.interview.questions && selectedApp.interview.questions.length > 0 && (
+                      <div className="space-y-3 pt-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1 flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                          Question & Candidate Response Transcripts
+                        </span>
+                        {selectedApp.interview.questions.map((q, idx) => (
+                          <div key={q.questionId || idx} className="bg-slate-900/40 rounded-xl p-4 border border-slate-800/80 space-y-2">
+                            <div className="flex items-center justify-between text-xs gap-2">
+                              <span className="font-bold text-indigo-300">Q{idx + 1}: {q.text}</span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                                Score: {q.aiScore}/10
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-200 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+                              <span className="text-[10px] text-slate-500 font-bold block mb-0.5">CANDIDATE RESPONSE:</span>
+                              {q.candidateAnswer || <em className="text-slate-500">No answer provided</em>}
+                            </div>
+                            {q.aiFeedback && (
+                              <p className="text-[11px] text-slate-400 italic">
+                                <strong className="text-slate-300">AI Evaluation:</strong> {q.aiFeedback}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
             )}
+
 
             {/* Decision Controls in Drawer */}
             {selectedApp.status === 'interviewed' && (

@@ -26,6 +26,32 @@ interface RecruiterProfile {
   company?: { _id: string; companyName: string; logo?: string } | null;
 }
 
+interface InterviewReport {
+  interviewId: string;
+  jobTitle: string;
+  overallScore?: number;
+  finalWeightedScore?: number;
+  recommendation?: string;
+  evaluation?: {
+    technicalScore?: number;
+    communicationScore?: number;
+    confidenceScore?: number;
+    grammarScore?: number;
+    problemSolvingScore?: number;
+    behavioralScore?: number;
+    overallScore?: number;
+    recommendation?: string;
+    feedback?: string;
+  } | null;
+  questions?: Array<{
+    questionId: string;
+    text: string;
+    candidateAnswer: string;
+    aiScore: number;
+    aiFeedback: string;
+  }>;
+}
+
 interface ApplicationItem {
   _id: string;
   jobId: {
@@ -64,6 +90,37 @@ export function CandidateApplications() {
   // Recruiter profile modal
   const [recruiter, setRecruiter] = useState<RecruiterProfile | null>(null);
   const [loadingRecruiter, setLoadingRecruiter] = useState(false);
+
+  // Interview report drawer
+  const [selectedReport, setSelectedReport] = useState<InterviewReport | null>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+
+  const viewInterviewReport = async (applicationId: string, jobTitle: string) => {
+    setLoadingReport(true);
+    setSelectedReport(null);
+    try {
+      const res = await api.get(`/interview?applicationId=${applicationId}`);
+      if (res.data && res.data.length > 0) {
+        const iv = res.data[0];
+        setSelectedReport({
+          interviewId: iv._id,
+          jobTitle,
+          overallScore: iv.overallScore,
+          finalWeightedScore: iv.finalWeightedScore || iv.overallScore,
+          recommendation: iv.evaluation?.recommendation || iv.result,
+          evaluation: iv.evaluation,
+          questions: iv.questions || [],
+        });
+      } else {
+        alert('No evaluation report found for this interview yet.');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || 'Failed to load evaluation report.');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
 
   const viewRecruiter = async (applicationId: string) => {
     setLoadingRecruiter(true);
@@ -303,6 +360,19 @@ export function CandidateApplications() {
                   </div>
                 )}
 
+                {/* View Interview & Evaluation Report Button */}
+                {(interviewMap[app._id] || ['interviewed', 'offered', 'hired', 'rejected'].includes(app.status)) && (
+                  <div className="mt-4 flex justify-center">
+                    <button
+                      onClick={() => viewInterviewReport(app._id, app.jobId?.title || 'Target Job')}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600/80 to-purple-600/80 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 text-indigo-200" /> View AI Interview & Evaluation Report
+                    </button>
+                  </div>
+                )}
+
+
                 {/* Reapply after rejection */}
                 {app.status === 'rejected' && app.jobId?._id && (
                   <div className="mt-4 flex flex-col items-center gap-2">
@@ -429,6 +499,141 @@ export function CandidateApplications() {
           </div>
         </div>
       )}
+
+      {/* AI Interview Report Drawer / Modal */}
+      {(selectedReport || loadingReport) && (
+
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-sm transition-all"
+          onClick={() => {
+            setSelectedReport(null);
+            setLoadingReport(false);
+          }}
+        >
+          <div
+            className="w-full max-w-2xl bg-slate-900 border-l border-slate-800 p-8 overflow-y-auto h-screen shadow-2xl relative text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setSelectedReport(null);
+                setLoadingReport(false);
+              }}
+              className="absolute top-6 right-6 text-slate-400 hover:text-white transition-all text-sm font-semibold border border-slate-800 rounded-lg px-3 py-1.5 hover:bg-slate-800"
+            >
+              ✕ Close
+            </button>
+
+            <h2 className="text-2xl font-extrabold mb-1 flex items-center gap-2 text-white">
+              AI Interview Evaluation Report <Sparkles className="text-indigo-400 w-5 h-5" />
+            </h2>
+            <p className="text-slate-400 text-sm mb-6">
+              Role: <span className="text-white font-semibold">{selectedReport?.jobTitle}</span>
+            </p>
+
+            {loadingReport ? (
+              <div className="flex justify-center py-20">
+                <span className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+              </div>
+            ) : selectedReport ? (
+              <div className="space-y-6">
+                {/* High Contrast Top Metric Cards */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-950/60 rounded-xl p-5 border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 block mb-1">
+                      Interview Score
+                    </span>
+                    <div className="text-3xl font-extrabold text-white flex items-baseline gap-1">
+                      {selectedReport.overallScore !== undefined ? Math.round(selectedReport.overallScore) : 'N/A'}{' '}
+                      <span className="text-sm font-medium text-indigo-400">/ 100</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/60 rounded-xl p-5 border border-amber-500/30 shadow-lg shadow-amber-500/10">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">
+                      AI Recommendation
+                    </span>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                      selectedReport.recommendation?.includes('strong_hire') || selectedReport.recommendation?.includes('hire')
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : selectedReport.recommendation?.includes('maybe')
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    }`}>
+                      {selectedReport.recommendation ? selectedReport.recommendation.toUpperCase().replace(/_/g, ' ') : 'PENDING'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Skill Ratings Grid */}
+                {selectedReport.evaluation && (
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Performance Skill Breakdown
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { label: 'Technical Skills', score: selectedReport.evaluation.technicalScore },
+                        { label: 'Communication', score: selectedReport.evaluation.communicationScore },
+                        { label: 'Confidence', score: selectedReport.evaluation.confidenceScore },
+                        { label: 'Grammar', score: selectedReport.evaluation.grammarScore },
+                        { label: 'Problem Solving', score: selectedReport.evaluation.problemSolvingScore },
+                        { label: 'Behavioral', score: selectedReport.evaluation.behavioralScore },
+                      ].map((item) => (
+                        <div key={item.label} className="bg-slate-950/40 p-3 rounded-lg border border-slate-800">
+                          <span className="text-[11px] font-medium text-slate-400 block mb-1">{item.label}</span>
+                          <div className="text-base font-bold text-white">{item.score !== undefined ? `${item.score} / 100` : 'N/A'}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* AI Feedback */}
+                    {selectedReport.evaluation.feedback && (
+                      <div className="bg-slate-950/40 rounded-xl p-4 border border-slate-800">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block mb-2">
+                          Recruiter Evaluation Summary
+                        </span>
+                        <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                          {selectedReport.evaluation.feedback}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Question & Answer Transcripts */}
+                {selectedReport.questions && selectedReport.questions.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Question & Response Transcripts ({selectedReport.questions.length})
+                    </h3>
+                    {selectedReport.questions.map((q, idx) => (
+                      <div key={q.questionId || idx} className="bg-slate-950/40 rounded-xl p-4 border border-slate-800/80 space-y-2">
+                        <div className="flex items-center justify-between text-xs gap-2">
+                          <span className="font-bold text-indigo-300">Q{idx + 1}: {q.text}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                            Score: {q.aiScore}/10
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-200 bg-slate-900/60 p-3 rounded-lg border border-slate-800/60">
+                          <span className="text-[10px] text-slate-400 font-bold block mb-1">YOUR RESPONSE:</span>
+                          {q.candidateAnswer || <em className="text-slate-500">No response recorded</em>}
+                        </div>
+                        {q.aiFeedback && (
+                          <p className="text-[11px] text-slate-400 italic">
+                            <strong className="text-slate-300">AI Evaluation:</strong> {q.aiFeedback}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

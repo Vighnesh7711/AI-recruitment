@@ -1,5 +1,7 @@
 {
   "name": "Resume Rejected Improvement Workflow",
+  "active": true,
+
   "nodes": [
     {
       "parameters": {

@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import axios from 'axios';
@@ -11,9 +13,10 @@ import {
   Hr,
 } from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { uploadToCloudinary } from '../utils/cloudinary';
+import { uploadToCloudinary, uploadResumePdf } from '../utils/cloudinary';
 import { AppError } from '../utils/errors';
 import logger from '../lib/logger';
+
 import { autoScheduleInterview } from '../utils/autoSchedule';
 
 const router = Router();
@@ -72,7 +75,7 @@ router.post(
         throw new AppError('Candidate profile not found.', 404, 'NOT_FOUND');
       }
 
-      const resumeUrl = await uploadToCloudinary(req.file.buffer, 'resumes', 'raw');
+      const resumeUrl = await uploadResumePdf(req.file.buffer);
 
       const resume = await Resume.create({
         candidateId: candidate._id,
@@ -426,15 +429,36 @@ router.get(
         throw new AppError('You do not have permission to view this resume.', 403, 'FORBIDDEN');
       }
 
+      if (!resume.resumeUrl) {
+        throw new AppError('Resume URL not found.', 404, 'NOT_FOUND');
+      }
+
+      // Stream local file if stored locally in uploads folder
+      if (resume.resumeUrl.startsWith('/uploads')) {
+        const localPath = path.join(process.cwd(), resume.resumeUrl);
+        if (!fs.existsSync(localPath)) {
+          throw new AppError(
+            'The requested resume file is unavailable on local disk. Please upload a new resume.',
+            404,
+            'FILE_UNAVAILABLE'
+          );
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="resume.pdf"');
+        fs.createReadStream(localPath).pipe(res);
+        return;
+      }
+
       // Guard against the Cloudinary mock URL fallback (returned when Cloudinary
       // is not configured) which points at a non-existent file.
-      if (!resume.resumeUrl || resume.resumeUrl.includes('res.cloudinary.com/mock-cloud')) {
+      if (resume.resumeUrl.includes('res.cloudinary.com/mock-cloud')) {
         throw new AppError(
-          'The stored resume file is unavailable (upload storage is not configured).',
+          'The stored resume file is unavailable (uploaded prior to storage setup). Please re-upload your resume.',
           502,
           'FILE_UNAVAILABLE'
         );
       }
+
 
       // Stream the PDF from its stored location and force inline rendering.
       try {

@@ -208,6 +208,8 @@ body {
 .text-white { color: var(--color-ink) !important; }
 
 /* Exception list: force real white text on dark green backgrounds */
+.force-text-white,
+.force-text-white *,
 .bg-slate-950\/80 .text-white,
 [style*="background-color: #1b3b2c"] .text-white,
 [style*="backgroundColor"] .text-white,

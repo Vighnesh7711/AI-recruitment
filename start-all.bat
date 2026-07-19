@@ -18,7 +18,9 @@ echo [4/5] Launching Avatar Service (Port 5002)...
 start "AuraRecruit - Avatar Service" cmd /k "npm run dev:avatar"
 
 echo [5/5] Launching n8n Workflow Server (Port 5678)...
-start "AuraRecruit - n8n Workflows" cmd /k "npx n8n start"
+start "AuraRecruit - n8n Workflows" cmd /k "set N8N_MCP_ENABLED=false&& set N8N_DIAGNOSTICS_ENABLED=false&& npx n8n start"
+
+
 
 echo.
 echo ===================================================

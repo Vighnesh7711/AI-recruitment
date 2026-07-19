@@ -16,7 +16,8 @@ Write-Host "[4/5] Launching Avatar Service (Port 5002)..." -ForegroundColor Yell
 Start-Process cmd -ArgumentList '/k "npm run dev:avatar"' -NoNewWindow:$false
 
 Write-Host "[5/5] Launching n8n Workflow Server (Port 5678)..." -ForegroundColor Yellow
-Start-Process cmd -ArgumentList '/k "npx n8n start"' -NoNewWindow:$false
+Start-Process cmd -ArgumentList '/k "set N8N_MCP_ENABLED=false&& set N8N_DIAGNOSTICS_ENABLED=false&& npx n8n start"' -NoNewWindow:$false
+
 
 Write-Host ""
 Write-Host "===================================================" -ForegroundColor Green

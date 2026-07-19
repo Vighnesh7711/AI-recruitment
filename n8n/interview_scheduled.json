@@ -1,5 +1,7 @@
 {
   "name": "Interview Scheduled Workflow",
+  "active": true,
+
   "nodes": [
     {
       "parameters": {

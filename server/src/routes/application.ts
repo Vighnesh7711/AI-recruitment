@@ -11,7 +11,10 @@ import {
   ResumeAnalysis,
   Interview,
   InterviewEvaluation,
+  QuestionResponse,
+  Notification,
 } from '../../../database';
+
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
 import logger from '../lib/logger';
@@ -129,34 +132,59 @@ router.get(
         })
         .sort({ appliedOn: -1 });
 
-      const response = applications.map((app) => {
-        const jobObj: any = app.jobId;
-        const companyObj: any = jobObj ? jobObj.companyId : null;
-        return {
-          _id: app._id,
-          status: app.status,
-          appliedOn: app.appliedOn,
-          createdAt: app.appliedOn,
-          jobId: jobObj
-            ? {
-                _id: jobObj._id,
-                title: jobObj.title,
-                domain: jobObj.domain,
-                department: jobObj.domain,
-                location: jobObj.location,
-                companyId: companyObj
-                  ? {
-                      _id: companyObj._id,
-                      name: companyObj.companyName,
-                      companyName: companyObj.companyName,
-                      logoUrl: companyObj.logo,
-                      logo: companyObj.logo,
-                    }
-                  : null,
+      const response = await Promise.all(
+        applications.map(async (app) => {
+          const jobObj: any = app.jobId;
+          const companyObj: any = jobObj ? jobObj.companyId : null;
+
+          // ponytail: reconcile stale application status with actual interview state.
+          // If the interview is done but the application is stuck at an earlier status
+          // (e.g. under_review / shortlisted / interview_scheduled), auto-correct it.
+          const staleStatuses = ['applied', 'under_review', 'shortlisted', 'interview_scheduled'];
+          if (staleStatuses.includes(app.status)) {
+            const interview = await Interview.findOne({ applicationId: app._id });
+            if (interview) {
+              if (interview.result === 'selected' || interview.result === 'rejected') {
+                // Interview fully evaluated — advance to 'interviewed' (or 'rejected')
+                const newStatus = interview.result === 'rejected' ? 'rejected' : 'interviewed';
+                if (app.status !== newStatus) {
+                  app.status = newStatus as any;
+                  await app.save();
+                }
+              } else if (app.status !== 'interview_scheduled') {
+                // Interview exists but not yet evaluated — at minimum show 'interview_scheduled'
+                app.status = 'interview_scheduled' as any;
+                await app.save();
               }
-            : null,
-        };
-      });
+            }
+          }
+
+          return {
+            _id: app._id,
+            status: app.status,
+            appliedOn: app.appliedOn,
+            createdAt: app.appliedOn,
+            jobId: jobObj
+              ? {
+                  _id: jobObj._id,
+                  title: jobObj.title,
+                  domain: jobObj.domain,
+                  department: jobObj.domain,
+                  location: jobObj.location,
+                  companyId: companyObj
+                    ? {
+                        _id: companyObj._id,
+                        name: companyObj.companyName,
+                        companyName: companyObj.companyName,
+                        logoUrl: companyObj.logo,
+                        logo: companyObj.logo,
+                      }
+                    : null,
+                }
+              : null,
+          };
+        })
+      );
 
       res.json(response);
     } catch (error) {
@@ -211,8 +239,21 @@ router.get(
           // Fetch associated interview & evaluation
           const interview = await Interview.findOne({ applicationId: app._id });
           let evaluation = null;
+          let questionsList: any[] = [];
           if (interview) {
             evaluation = await InterviewEvaluation.findOne({ interviewId: interview._id });
+            const responses = await QuestionResponse.find({ interviewId: interview._id }).populate('questionId');
+            questionsList = responses.map((resp) => {
+              const qBank: any = resp.questionId;
+              const qText = (qBank && typeof qBank === 'object' && qBank.question) ? qBank.question : '';
+              return {
+                questionId: resp._id.toString(),
+                text: qText || 'Interview Question',
+                candidateAnswer: resp.answer || '',
+                aiScore: resp.aiScore || 0,
+                aiFeedback: resp.feedback || '',
+              };
+            });
           }
 
           return {
@@ -245,8 +286,10 @@ router.get(
                   status: interview.result,
                   overallScore: interview.overallScore,
                   result: interview.result,
+                  questions: questionsList,
                 }
               : null,
+
             evaluation: evaluation
               ? {
                   technicalScore: evaluation.technicalScore,
@@ -492,20 +535,36 @@ router.patch(
         );
       }
 
-      if (status === 'hired') {
-        const webhookUrl = process.env.N8N_WEBHOOK_OFFER;
-        if (webhookUrl) {
-          try {
-            const candidate = await Candidate.findById(application.candidateId).populate('userId');
-            if (candidate) {
-              const userObj: any = candidate.userId;
-              let companyName = 'Our Company';
-              if (job.companyId) {
-                const company = await Company.findById(job.companyId);
-                if (company) {
-                  companyName = company.companyName;
-                }
+      if (['hired', 'offered', 'selected'].includes(status)) {
+        try {
+          const candidate = await Candidate.findById(application.candidateId).populate('userId');
+          if (candidate) {
+            const userObj: any = candidate.userId;
+            let companyName = 'Our Company';
+            if (job.companyId) {
+              const company = await Company.findById(job.companyId);
+              if (company) {
+                companyName = company.companyName;
               }
+            }
+
+            // 1. Candidate in-app notification
+            await Notification.create({
+              userId: userObj._id || userObj,
+              title: 'Congratulations! You are Selected! 🎉',
+              message: `Congratulations ${candidate.name}! You have been selected and hired for the position of "${job.title}" at ${companyName}. We are excited to welcome you!`,
+            });
+
+            // 2. HR in-app notification
+            await Notification.create({
+              userId: req.user!._id,
+              title: `Candidate ${status.toUpperCase()} 🌟`,
+              message: `Candidate ${candidate.name} has been officially marked as ${status.toUpperCase()} for "${job.title}".`,
+            });
+
+            // 3. Webhook for offer/hired email
+            const webhookUrl = process.env.N8N_WEBHOOK_OFFER;
+            if (webhookUrl) {
               await axios.post(
                 webhookUrl,
                 {
@@ -519,9 +578,9 @@ router.patch(
               );
               logger.info(`[Application] N8N offer webhook fired for application ${application._id}`);
             }
-          } catch (err: any) {
-            logger.warn(`[Application] N8N offer webhook failed to fire: ${err.message}`);
           }
+        } catch (err: any) {
+          logger.warn(`[Application] Offer notification or webhook failed: ${err.message}`);
         }
       }
 
@@ -589,6 +648,26 @@ router.post(
       // Update status to selected
       application.status = 'selected';
       await application.save();
+
+      const userObj: any = candidate.userId;
+
+      // 1. Candidate in-app notification
+      try {
+        await Notification.create({
+          userId: userObj._id || userObj,
+          title: 'Congratulations! Job Offer Received! 🎉',
+          message: `Congratulations ${candidate.name}! You have been selected and offered the position of "${job.title}" at ${companyName}. Please check your email for full details!`,
+        });
+
+        // 2. HR in-app notification
+        await Notification.create({
+          userId: req.user!._id,
+          title: 'Offer Sent to Candidate 🌟',
+          message: `Offer sent successfully to ${candidate.name} for position "${job.title}".`,
+        });
+      } catch (notifErr: any) {
+        logger.warn(`[Application] Failed to create send-offer notifications: ${notifErr.message}`);
+      }
 
       // Trigger N8N offer webhook
       const webhookUrl = process.env.N8N_WEBHOOK_OFFER;
