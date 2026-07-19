@@ -11,10 +11,17 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
+      },
+      '/avatar-service': {
+        target: 'http://localhost:5002',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/avatar-service/, ''),
       },
     },
   },

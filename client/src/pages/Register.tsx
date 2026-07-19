@@ -1,14 +1,50 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../lib/api';
-import { Mail, Lock, User, Briefcase, Phone, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, Phone, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
+
+// ponytail: inline country list avoids a new dependency; covers common codes
+const COUNTRY_CODES = [
+  { code: '+91', flag: '🇮🇳', label: 'India' },
+  { code: '+1', flag: '🇺🇸', label: 'US' },
+  { code: '+44', flag: '🇬🇧', label: 'UK' },
+  { code: '+61', flag: '🇦🇺', label: 'Australia' },
+  { code: '+49', flag: '🇩🇪', label: 'Germany' },
+  { code: '+33', flag: '🇫🇷', label: 'France' },
+  { code: '+81', flag: '🇯🇵', label: 'Japan' },
+  { code: '+86', flag: '🇨🇳', label: 'China' },
+  { code: '+971', flag: '🇦🇪', label: 'UAE' },
+  { code: '+65', flag: '🇸🇬', label: 'Singapore' },
+  { code: '+82', flag: '🇰🇷', label: 'South Korea' },
+  { code: '+55', flag: '🇧🇷', label: 'Brazil' },
+  { code: '+7', flag: '🇷🇺', label: 'Russia' },
+  { code: '+234', flag: '🇳🇬', label: 'Nigeria' },
+  { code: '+27', flag: '🇿🇦', label: 'South Africa' },
+  { code: '+52', flag: '🇲🇽', label: 'Mexico' },
+  { code: '+60', flag: '🇲🇾', label: 'Malaysia' },
+  { code: '+63', flag: '🇵🇭', label: 'Philippines' },
+  { code: '+62', flag: '🇮🇩', label: 'Indonesia' },
+  { code: '+39', flag: '🇮🇹', label: 'Italy' },
+  { code: '+34', flag: '🇪🇸', label: 'Spain' },
+  { code: '+31', flag: '🇳🇱', label: 'Netherlands' },
+  { code: '+46', flag: '🇸🇪', label: 'Sweden' },
+  { code: '+41', flag: '🇨🇭', label: 'Switzerland' },
+  { code: '+48', flag: '🇵🇱', label: 'Poland' },
+  { code: '+90', flag: '🇹🇷', label: 'Turkey' },
+  { code: '+966', flag: '🇸🇦', label: 'Saudi Arabia' },
+  { code: '+92', flag: '🇵🇰', label: 'Pakistan' },
+  { code: '+880', flag: '🇧🇩', label: 'Bangladesh' },
+  { code: '+94', flag: '🇱🇰', label: 'Sri Lanka' },
+  { code: '+977', flag: '🇳🇵', label: 'Nepal' },
+];
 
 export function Register() {
-  const [role, setRole] = useState<'hr' | 'candidate'>('hr');
+  const [role, setRole] = useState<'hr' | 'candidate'>('candidate');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [designation, setDesignation] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -31,7 +67,7 @@ export function Register() {
     try {
       const endpoint = role === 'hr' ? '/auth/register/hr' : '/auth/register/candidate';
       const body =
-        role === 'hr' ? { email, password, name, designation } : { email, password, name, phone };
+        role === 'hr' ? { email, password, name, designation } : { email, password, name, phone: `${countryCode} ${phone}` };
 
       const response = await api.post(endpoint, body);
       setSuccess(response.data.message || 'Registration successful! Simulating verification...');
@@ -246,19 +282,38 @@ export function Register() {
                   <label htmlFor="phone" className="block text-sm font-medium text-slate-300">
                     Phone Number
                   </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Phone className="h-5 w-5 text-slate-500" />
+                  <div className="mt-1 flex gap-2">
+                    {/* Country Code Select */}
+                    <div className="relative shrink-0">
+                      <select
+                        id="country-code"
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                        className="appearance-none h-full pl-3 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer"
+                      >
+                        {COUNTRY_CODES.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.flag} {c.code}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
                     </div>
-                    <input
-                      id="phone"
-                      type="text"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                      placeholder="e.g. +1 (555) 0199"
-                    />
+                    {/* Phone Input */}
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Phone className="h-5 w-5 text-slate-500" />
+                      </div>
+                      <input
+                        id="phone"
+                        type="tel"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                        placeholder="98765 43210"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

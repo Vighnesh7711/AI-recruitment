@@ -66,6 +66,24 @@ export async function uploadImage(
 }
 
 /**
+ * Uploads a resume PDF buffer. If Cloudinary is configured, uploads to Cloudinary;
+ * otherwise saves locally under UPLOAD_DIR/resumes and returns a relative "/uploads/resumes/<file>" path.
+ */
+export async function uploadResumePdf(fileBuffer: Buffer): Promise<string> {
+  if (isCloudinaryConfigured()) {
+    return uploadToCloudinary(fileBuffer, 'resumes', 'raw');
+  }
+
+  const dir = path.join(UPLOAD_DIR, 'resumes');
+  fs.mkdirSync(dir, { recursive: true });
+  const fileName = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}.pdf`;
+  fs.writeFileSync(path.join(dir, fileName), fileBuffer);
+  logger.warn(`Cloudinary not configured — saved resume to local uploads folder (resumes/${fileName}).`);
+  return `/uploads/resumes/${fileName}`;
+}
+
+
+/**
  * Uploads a file buffer to Cloudinary and returns the secure_url.
  * If Cloudinary is not configured, logs a warning and returns a placeholder mock URL.
  */

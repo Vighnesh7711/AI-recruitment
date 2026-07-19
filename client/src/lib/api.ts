@@ -74,6 +74,22 @@ export function resolveAssetUrl(url?: string | null): string {
 export async function openResumePdf(resumeId: string): Promise<string | null> {
   try {
     const res = await api.get(`/resume/${resumeId}/view`, { responseType: 'blob' });
+
+    // Validate if the response blob is an error JSON or invalid size
+    if (res.data instanceof Blob) {
+      if (res.data.type !== 'application/pdf' || res.data.size < 300) {
+        try {
+          const text = await res.data.text();
+          const parsed = JSON.parse(text);
+          return parsed?.error?.message || 'The resume file is unavailable or invalid.';
+        } catch {
+          if (res.data.size < 100) {
+            return 'Invalid or unavailable PDF file.';
+          }
+        }
+      }
+    }
+
     const blob = new Blob([res.data], { type: 'application/pdf' });
     const blobUrl = URL.createObjectURL(blob);
     window.open(blobUrl, '_blank', 'noopener,noreferrer');
@@ -94,3 +110,4 @@ export async function openResumePdf(resumeId: string): Promise<string | null> {
     return err.response?.data?.error?.message || 'Failed to open resume.';
   }
 }
+

@@ -14,6 +14,7 @@ import {
   QuestionBank,
   QuestionResponse,
   ResumeAnalysis,
+  Notification,
 } from '../../../database';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { AppError } from '../utils/errors';
@@ -434,6 +435,8 @@ router.get(
         };
       });
 
+      const evaluation = await InterviewEvaluation.findOne({ interviewId: interview._id });
+
       const resObj = {
         _id: interview._id,
         applicationId: interview.applicationId,
@@ -447,6 +450,19 @@ router.get(
         result: interview.result,
         status: interview.result === 'pending' ? 'pending' : interview.result,
         questions: questionsList,
+        evaluation: evaluation
+          ? {
+              technicalScore: evaluation.technicalScore,
+              communicationScore: evaluation.communicationScore,
+              confidenceScore: evaluation.confidenceScore,
+              grammarScore: evaluation.grammarScore,
+              problemSolvingScore: evaluation.problemSolvingScore,
+              behavioralScore: evaluation.behavioralScore,
+              overallScore: evaluation.overallScore,
+              recommendation: evaluation.recommendation,
+              feedback: evaluation.feedback,
+            }
+          : null,
         candidateId: {
           _id: candidate._id,
           fullName: candidate.name,
@@ -520,6 +536,8 @@ router.get(
             };
           });
 
+          const evaluation = await InterviewEvaluation.findOne({ interviewId: interview._id });
+
           detailedInterviews.push({
             _id: interview._id,
             applicationId: interview.applicationId,
@@ -533,6 +551,19 @@ router.get(
             result: interview.result,
             status: interview.result === 'pending' ? 'pending' : interview.result,
             questions: questionsList,
+            evaluation: evaluation
+              ? {
+                  technicalScore: evaluation.technicalScore,
+                  communicationScore: evaluation.communicationScore,
+                  confidenceScore: evaluation.confidenceScore,
+                  grammarScore: evaluation.grammarScore,
+                  problemSolvingScore: evaluation.problemSolvingScore,
+                  behavioralScore: evaluation.behavioralScore,
+                  overallScore: evaluation.overallScore,
+                  recommendation: evaluation.recommendation,
+                  feedback: evaluation.feedback,
+                }
+              : null,
             candidateId: {
               _id: candidate._id,
               fullName: candidate.name,
@@ -550,6 +581,7 @@ router.get(
           });
         }
       }
+
 
       res.json(detailedInterviews);
     } catch (error) {
@@ -751,14 +783,16 @@ router.post(
 
       const questionsList = responses.map((resp) => {
         const qBank: any = resp.questionId;
+        const qText = (qBank && typeof qBank === 'object' && qBank.question) ? qBank.question : '';
         return {
           questionId: resp._id.toString(),
-          text: qBank ? qBank.question : '',
+          text: qText || 'Please describe your background and relevant experience for this role.',
           candidateAnswer: resp.answer || '',
           aiScore: resp.aiScore || 0,
           aiFeedback: resp.feedback || '',
         };
       });
+
 
       res.json({
         message: 'Interview session started successfully.',
@@ -1071,6 +1105,29 @@ Provide a comprehensive evaluation. Return ONLY a valid JSON object matching thi
               );
             }
           }
+        }
+
+        // Create in-app notifications
+        try {
+          const hrObj = await Hr.findById(job.hrId);
+          if (candidate.userId) {
+            await Notification.create({
+              userId: candidate.userId,
+              title: isRejected ? 'Interview Evaluation Update' : 'Interview Completed! 🎉',
+              message: isRejected
+                ? `Your interview evaluation for "${job.title}" has been completed. Feedback: ${feedback}`
+                : `Great job! You completed your interview for "${job.title}" with score ${overallInterviewScore}/100. Recommendation: ${recommendation.toUpperCase().replace('_', ' ')}.`,
+            });
+          }
+          if (hrObj && hrObj.userId) {
+            await Notification.create({
+              userId: hrObj.userId,
+              title: `Interview Completed: ${candidate.name}`,
+              message: `${candidate.name} finished the interview for "${job.title}". Score: ${overallInterviewScore}/100. Recommendation: ${recommendation.toUpperCase().replace('_', ' ')}.`,
+            });
+          }
+        } catch (notifErr: any) {
+          logger.warn(`[Interview] Failed to create completion notifications: ${notifErr.message}`);
         }
 
         // Fire N8N_WEBHOOK_INTERVIEW_COMPLETE

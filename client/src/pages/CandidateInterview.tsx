@@ -15,7 +15,9 @@ import {
   Keyboard,
   MicOff,
   RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Accept both the documented VITE_AVATAR_URL and the legacy VITE_AVATAR_SERVICE_URL.
@@ -242,6 +244,19 @@ export function CandidateInterview() {
         setFinalResult(res.data);
         setPhase('done');
       } else {
+        if (res.data.nextQuestion) {
+          setQuestions((prev) => {
+            const nextIdx = res.data.currentQuestionIndex;
+            const updated = [...prev];
+            updated[nextIdx] = {
+              questionId: res.data.nextQuestionId || `q_${nextIdx}`,
+              text: res.data.nextQuestion,
+              category: updated[nextIdx]?.category || 'technical',
+              weight: 1,
+            };
+            return updated;
+          });
+        }
         setCurrentIndex(res.data.currentQuestionIndex);
         if (mode === 'avatar') {
           pollForAction(sessionId);
@@ -249,6 +264,7 @@ export function CandidateInterview() {
           setPhase('listening');
         }
       }
+
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Failed to process answer.';
       setError(msg);
@@ -301,6 +317,19 @@ export function CandidateInterview() {
           setFinalResult(res.data);
           setPhase('done');
         } else {
+          if (res.data.nextQuestion) {
+            setQuestions((prev) => {
+              const nextIdx = res.data.currentQuestionIndex;
+              const updated = [...prev];
+              updated[nextIdx] = {
+                questionId: res.data.nextQuestionId || `q_${nextIdx}`,
+                text: res.data.nextQuestion,
+                category: updated[nextIdx]?.category || 'technical',
+                weight: 1,
+              };
+              return updated;
+            });
+          }
           setCurrentIndex(res.data.currentQuestionIndex);
           pollForAction(sessionId);
         }
@@ -343,7 +372,15 @@ export function CandidateInterview() {
     }
   };
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion = questions[currentIndex] || (
+    questions.length > 0 ? questions[questions.length - 1] : undefined
+  );
+  const displayQuestionText =
+    currentQuestion?.text?.trim() ||
+    (questions.length > 0
+      ? `Question ${currentIndex + 1}: Please provide your response.`
+      : 'Please describe your relevant skills and experience.');
+
 
   // ── DONE SCREEN ──
   if (phase === 'done' && finalResult) {
@@ -362,29 +399,36 @@ export function CandidateInterview() {
             Your responses have been recorded and evaluated by our AI system.
           </p>
 
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Interview Score</p>
-              <p className="text-2xl font-bold text-indigo-400">
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="p-5 rounded-2xl bg-slate-900 border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
+              <p className="text-xs font-bold uppercase tracking-wider text-indigo-300 mb-1.5 flex items-center justify-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Interview Score
+              </p>
+              <p className="text-3xl font-black text-white">
                 {Math.round(finalResult.overallInterviewScore || 0)}
-                <span className="text-sm text-slate-500">/100</span>
+                <span className="text-sm font-semibold text-slate-400">/100</span>
               </p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Final Score</p>
-              <p className="text-2xl font-bold text-emerald-400">
+            <div className="p-5 rounded-2xl bg-slate-900 border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-300 mb-1.5 flex items-center justify-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Final Score
+              </p>
+              <p className="text-3xl font-black text-white">
                 {finalResult.finalWeightedScore || 0}
-                <span className="text-sm text-slate-500">/100</span>
+                <span className="text-sm font-semibold text-slate-400">/100</span>
               </p>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 mb-8">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Recommendation</p>
-            <p className="text-lg font-bold capitalize text-amber-300">
+          <div className="p-5 rounded-2xl bg-slate-900 border border-amber-500/30 shadow-lg shadow-amber-500/10 mb-8">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5">
+              AI Recommendation
+            </p>
+            <p className="text-xl font-black uppercase tracking-wider text-amber-400">
               {(finalResult.recommendation || 'pending').replace(/_/g, ' ')}
             </p>
           </div>
+
 
           <button
             onClick={() => navigate('/candidate/applications')}
@@ -679,29 +723,28 @@ export function CandidateInterview() {
 
           {/* Question Display Card */}
           <AnimatePresence mode="wait">
-            {currentQuestion && (
-              <motion.div
-                key={currentQuestion.questionId}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.4 }}
-                className="p-6 rounded-2xl bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 shadow-2xl"
-              >
-                <div className="flex items-center gap-2 mb-3.5">
-                  <Brain className="w-4 h-4 text-indigo-400" />
-                  <span
-                    className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded-full border ${catColor(currentQuestion.category)}`}
-                  >
-                    {(currentQuestion.category || 'general').replace('_', ' ')}
-                  </span>
-                </div>
-                <p className="text-base font-semibold leading-relaxed text-slate-100">
-                  {currentQuestion.text}
-                </p>
-              </motion.div>
-            )}
+            <motion.div
+              key={currentQuestion?.questionId || currentIndex}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.4 }}
+              className="p-6 rounded-2xl bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 shadow-2xl"
+            >
+              <div className="flex items-center gap-2 mb-3.5">
+                <Brain className="w-4 h-4 text-indigo-400" />
+                <span
+                  className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded-full border ${catColor(currentQuestion?.category || 'general')}`}
+                >
+                  {(currentQuestion?.category || 'general').replace('_', ' ')}
+                </span>
+              </div>
+              <p className="text-base font-semibold leading-relaxed text-slate-100">
+                {displayQuestionText}
+              </p>
+            </motion.div>
           </AnimatePresence>
+
 
           {/* Input & Microphone Interactive Panel */}
           <div className="space-y-4">

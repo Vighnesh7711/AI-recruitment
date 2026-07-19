@@ -1,5 +1,7 @@
 {
   "name": "Interview Reminder Workflow",
+  "active": true,
+
   "nodes": [
     {
       "parameters": {

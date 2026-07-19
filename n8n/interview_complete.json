@@ -1,5 +1,7 @@
 {
   "name": "Interview Complete HR Reporting Workflow",
+  "active": true,
+
   "nodes": [
     {
       "parameters": {
@@ -16,7 +18,8 @@
     {
       "parameters": {
         "operation": "appendRow",
-        "spreadsheetId": "your-spreadsheet-id-placeholder",
+        "spreadsheetId": "1U1CGMu-pgjtvdBj4Q8aoPSJ9ru530bQm-DtzTyQNIR4",
+
         "sheetName": "Sheet1",
         "columns": {
           "mappingMode": "defineBelow",
