@@ -5,10 +5,39 @@ AuraRecruit is a premium, enterprise-grade AI recruitment automation platform. I
 The entire visual system has been upgraded to the premium **Tomorro Design System**, featuring high-contrast interactive elements, soft organic canvases, and beautiful layered card aesthetics.
 
 ### 🖥️ Platform Previews
+
 <p align="center">
-  <img src="./docs/screenshots/dashboard_mockup.png" width="48%" alt="HR Recruitment Dashboard" />
-  <img src="./docs/screenshots/talking_avatar_mockup.png" width="48%" alt="3D Talking Avatar Interview" />
+  <img src="./docs/screenshots/interview_session.png" width="48%" alt="AI Talking Avatar Interview Session" />
+  <img src="./docs/screenshots/hr_pipeline_dashboard.png" width="48%" alt="HR Talent Pipeline Command Hub" />
 </p>
+
+<p align="center">
+  <img src="./docs/screenshots/applications.png" width="48%" alt="Candidate Application Tracking & Stepper" />
+  <img src="./docs/screenshots/landing.png" width="48%" alt="AuraRecruit Careers & Job Portal" />
+</p>
+
+---
+
+## 🎙️ Interactive AI Interview Session & Avatar Engine
+
+AuraRecruit provides an immersive candidate interview experience built into `CandidateInterview.tsx`. Candidates engage in structured, real-time interviews with an AI recruiter featuring:
+
+### Key Features & Capabilities:
+*   **Dual-Mode Candidate Engine**:
+    *   **Interactive Voice Mode**: Hands-free interview powered by browser microphone capture (`MediaRecorder` API audio stream). Captures WebM audio chunks and transmits base64 audio to the backend avatar bridge with real-time visual feedback (`Microphone Ready`, `Listening & Recording...`, `AI Evaluation...`).
+    *   **Text Response Mode**: Candidate can switch to full text mode with a single click. Includes `Ctrl+Enter` shortcut submission and clean text fallback.
+*   **Live Vector Animated Avatar**:
+    *   Custom SVG vector avatar with glassmorphic head visor and cybernetic neck connectors.
+    *   Dynamic ambient state lighting: Shifts smoothly between Indigo/Purple glow during AI speech, Emerald/Red glow during candidate recording, and Cyan pulsing rings during AI score evaluation.
+    *   Keyframe CSS animations for natural organic movement: Head floating (`avatarFloat`), eye blinking (`avatarBlink`), speech lip-sync (`avatarTalk`), and loading state spinners (`spinRing`).
+*   **Gemini AI Question & Evaluation Pipeline**:
+    *   Dynamic question sequence categorized across Technical, Behavioral, Situational, and Culture Fit criteria.
+    *   Real-time speech-to-text transcript processing and automated scoring per response.
+    *   Post-interview score calculation displaying **Interview Score (/100)**, **Weighted ATS Rating**, and **AI Hiring Recommendation** (*Hire*, *Shortlist*, *Reject*).
+*   **Fault-Tolerant Audio & Session Safety**:
+    *   **15-Second Graceful Fallback**: If voice avatar response times out, the system automatically transitions the candidate to text mode to prevent interview interruptions.
+    *   **Autoplay Audio Recovery**: Adaptive timeouts auto-advance the interview state even if the browser blocks auto-play audio.
+    *   **Detailed Hardware Error Diagnostics**: Helpful guidance for microphone permission denials, missing audio hardware, or track conflicts.
 
 ---
 
