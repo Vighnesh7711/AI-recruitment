@@ -23,8 +23,8 @@ The entire visual system is built on the **Tomorro Design System**, featuring hi
 <br />
 
 <p align="center">
-  <a href="./docs/screenshots/applications.png">
-    <img src="./docs/screenshots/applications.png" width="48%" alt="Candidate Application Tracking & Stepper" />
+  <a href="./docs/screenshots/my_application.png">
+    <img src="./docs/screenshots/my_application.png" width="48%" alt="Candidate My Applications Tracking & Stepper" />
   </a>
   <a href="./docs/screenshots/landing.png">
     <img src="./docs/screenshots/landing.png" width="48%" alt="AuraRecruit Careers & Job Portal" />
@@ -59,7 +59,7 @@ AuraRecruit provides an immersive, automated candidate interview experience impl
 
 ---
 
-## 📊 Candidate Application Tracking & Pipeline Stepper
+## 📊 Candidate Application Tracking & Pipeline Stepper (`my_application.png`)
 
 Built into `client/src/pages/CandidateApplications.tsx`, candidates get full visibility into their recruitment lifecycle:
 *   **5-Stage Visual Progress Stepper**: Tracks candidate progress across `Applied` ➔ `Reviewing` ➔ `Shortlisted` ➔ `Interviewing` ➔ `Selected`.
