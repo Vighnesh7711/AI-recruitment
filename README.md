@@ -9,12 +9,25 @@ The entire visual system is built on the **Tomorro Design System**, featuring hi
 ### 🖥️ Platform Previews
 
 <p align="center">
-  <img src="./docs/screenshots/interview_session.png" width="48%" alt="AuraRecruit Interview Session" />
-  <img src="./docs/screenshots/applications.png" width="48%" alt="HR Talent Pipeline Command Hub" />
+  <img src="./docs/screenshots/interview_session.png" width="95%" alt="AuraRecruit Interview Session" />
 </p>
+
+<br />
+
 <p align="center">
-  <img src="./docs/screenshots/my_application.png" width="48%" alt="Candidate Applications" />
-  <img src="./docs/screenshots/landing.png" width="48%" alt="AuraRecruit Landing Page" />
+  <img src="./docs/screenshots/applications.png" width="95%" alt="HR Talent Pipeline Command Hub" />
+</p>
+
+<br />
+
+<p align="center">
+  <img src="./docs/screenshots/my_application.png" width="95%" alt="Candidate Applications" />
+</p>
+
+<br />
+
+<p align="center">
+  <img src="./docs/screenshots/landing.png" width="95%" alt="AuraRecruit Landing Page" />
 </p>
 
 ---
