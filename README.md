@@ -6,32 +6,15 @@ The entire visual system is built on the **Tomorro Design System**, featuring hi
 
 ---
 
-### 🖥️ Platform Previews & Live Screens
+### 🖥️ Platform Previews
 
 <p align="center">
-  <a href="./docs/screenshots/interview_session.png">
-    <img src="./docs/screenshots/interview_session.png" width="48%" alt="AI Talking Avatar Interview Session" />
-  </a>
-  <a href="./docs/screenshots/hr_pipeline_dashboard.png">
-    <img src="./docs/screenshots/hr_pipeline_dashboard.png" width="48%" alt="HR Talent Pipeline Command Hub" />
-  </a>
+  <img src="./docs/screenshots/interview_session.png" width="48%" alt="AuraRecruit Interview Session" />
+  <img src="./docs/screenshots/applications.png" width="48%" alt="HR Talent Pipeline Command Hub" />
 </p>
 <p align="center">
-  <sub><b>Left:</b> Candidate Interactive AI Interview Session (Voice & Text Engine) &nbsp;|&nbsp; <b>Right:</b> HR Talent Pipeline Command Hub & Screening Matrix</sub>
-</p>
-
-<br />
-
-<p align="center">
-  <a href="./docs/screenshots/my_application.png">
-    <img src="./docs/screenshots/my_application.png" width="48%" alt="Candidate My Applications Tracking & Stepper" />
-  </a>
-  <a href="./docs/screenshots/landing.png">
-    <img src="./docs/screenshots/landing.png" width="48%" alt="AuraRecruit Careers & Job Portal" />
-  </a>
-</p>
-<p align="center">
-  <sub><b>Left:</b> Candidate "My Applications" Real-Time Status Stepper & Report Trigger &nbsp;|&nbsp; <b>Right:</b> AuraRecruit Careers & Job Openings Portal</sub>
+  <img src="./docs/screenshots/my_application.png" width="48%" alt="Candidate Applications" />
+  <img src="./docs/screenshots/landing.png" width="48%" alt="AuraRecruit Landing Page" />
 </p>
 
 ---
@@ -59,7 +42,7 @@ AuraRecruit provides an immersive, automated candidate interview experience impl
 
 ---
 
-## 📊 Candidate Application Tracking & Pipeline Stepper (`my_application.png`)
+## 📊 Candidate Application Tracking & Pipeline Stepper
 
 Built into `client/src/pages/CandidateApplications.tsx`, candidates get full visibility into their recruitment lifecycle:
 *   **5-Stage Visual Progress Stepper**: Tracks candidate progress across `Applied` ➔ `Reviewing` ➔ `Shortlisted` ➔ `Interviewing` ➔ `Selected`.
