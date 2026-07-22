@@ -2,42 +2,70 @@
 
 AuraRecruit is a premium, enterprise-grade AI recruitment automation platform. It features automated resume parsing, ATS evaluation scoring, job posting management, and real-time interactive AI talking-avatar interviews (via text and voice). 
 
-The entire visual system has been upgraded to the premium **Tomorro Design System**, featuring high-contrast interactive elements, soft organic canvases, and beautiful layered card aesthetics.
+The entire visual system is built on the **Tomorro Design System**, featuring high-contrast interactive elements, soft organic canvases, dynamic status steppers, and beautiful layered card aesthetics.
 
-### 🖥️ Platform Previews
+---
+
+### 🖥️ Platform Previews & Live Screens
 
 <p align="center">
-  <img src="./docs/screenshots/interview_session.png" width="48%" alt="AI Talking Avatar Interview Session" />
-  <img src="./docs/screenshots/hr_pipeline_dashboard.png" width="48%" alt="HR Talent Pipeline Command Hub" />
+  <a href="./docs/screenshots/interview_session.png">
+    <img src="./docs/screenshots/interview_session.png" width="48%" alt="AI Talking Avatar Interview Session" />
+  </a>
+  <a href="./docs/screenshots/hr_pipeline_dashboard.png">
+    <img src="./docs/screenshots/hr_pipeline_dashboard.png" width="48%" alt="HR Talent Pipeline Command Hub" />
+  </a>
+</p>
+<p align="center">
+  <sub><b>Left:</b> Candidate Interactive AI Interview Session (Voice & Text Engine) &nbsp;|&nbsp; <b>Right:</b> HR Talent Pipeline Command Hub & Screening Matrix</sub>
 </p>
 
+<br />
+
 <p align="center">
-  <img src="./docs/screenshots/applications.png" width="48%" alt="Candidate Application Tracking & Stepper" />
-  <img src="./docs/screenshots/landing.png" width="48%" alt="AuraRecruit Careers & Job Portal" />
+  <a href="./docs/screenshots/applications.png">
+    <img src="./docs/screenshots/applications.png" width="48%" alt="Candidate Application Tracking & Stepper" />
+  </a>
+  <a href="./docs/screenshots/landing.png">
+    <img src="./docs/screenshots/landing.png" width="48%" alt="AuraRecruit Careers & Job Portal" />
+  </a>
+</p>
+<p align="center">
+  <sub><b>Left:</b> Candidate "My Applications" Real-Time Status Stepper & Report Trigger &nbsp;|&nbsp; <b>Right:</b> AuraRecruit Careers & Job Openings Portal</sub>
 </p>
 
 ---
 
 ## 🎙️ Interactive AI Interview Session & Avatar Engine
 
-AuraRecruit provides an immersive candidate interview experience built into `CandidateInterview.tsx`. Candidates engage in structured, real-time interviews with an AI recruiter featuring:
+AuraRecruit provides an immersive, automated candidate interview experience implemented in `client/src/pages/CandidateInterview.tsx`. Candidates interact directly with an AI recruiter using real-time audio or text input.
 
 ### Key Features & Capabilities:
 *   **Dual-Mode Candidate Engine**:
-    *   **Interactive Voice Mode**: Hands-free interview powered by browser microphone capture (`MediaRecorder` API audio stream). Captures WebM audio chunks and transmits base64 audio to the backend avatar bridge with real-time visual feedback (`Microphone Ready`, `Listening & Recording...`, `AI Evaluation...`).
-    *   **Text Response Mode**: Candidate can switch to full text mode with a single click. Includes `Ctrl+Enter` shortcut submission and clean text fallback.
+    *   **Interactive Voice Mode**: Hands-free interview powered by browser microphone capture (`MediaRecorder` API audio stream). Captures WebM audio chunks and streams base64 audio to the backend avatar bridge with real-time visual status updates (*Microphone Ready*, *Listening & Recording...*, *AI Evaluation...*).
+    *   **Keyboard Text Response Mode**: Candidates can switch to text mode at any time. Features multiline text submission with `Ctrl+Enter` shortcut support and seamless mode switching without losing progress.
 *   **Live Vector Animated Avatar**:
-    *   Custom SVG vector avatar with glassmorphic head visor and cybernetic neck connectors.
-    *   Dynamic ambient state lighting: Shifts smoothly between Indigo/Purple glow during AI speech, Emerald/Red glow during candidate recording, and Cyan pulsing rings during AI score evaluation.
-    *   Keyframe CSS animations for natural organic movement: Head floating (`avatarFloat`), eye blinking (`avatarBlink`), speech lip-sync (`avatarTalk`), and loading state spinners (`spinRing`).
+    *   Custom SVG vector avatar head with glassmorphic face visor and cybernetic neck details.
+    *   Dynamic ambient state lighting: Shifts smoothly between Indigo/Purple glow during AI speech output, Emerald/Red glow during candidate recording, and Cyan pulsing rings during AI answer evaluation.
+    *   Keyframe CSS animations for natural organic movement: Head floating (`avatarFloat`), eye blinking (`avatarBlink`), speech lip-sync (`avatarTalk`), and processing spinners (`spinRing`).
 *   **Gemini AI Question & Evaluation Pipeline**:
     *   Dynamic question sequence categorized across Technical, Behavioral, Situational, and Culture Fit criteria.
     *   Real-time speech-to-text transcript processing and automated scoring per response.
-    *   Post-interview score calculation displaying **Interview Score (/100)**, **Weighted ATS Rating**, and **AI Hiring Recommendation** (*Hire*, *Shortlist*, *Reject*).
+    *   Post-interview evaluation report displaying **Interview Score (/100)**, **Weighted ATS Rating**, and **AI Hiring Recommendation** (*Hire*, *Shortlist*, *Reject*).
 *   **Fault-Tolerant Audio & Session Safety**:
-    *   **15-Second Graceful Fallback**: If voice avatar response times out, the system automatically transitions the candidate to text mode to prevent interview interruptions.
+    *   **15-Second Graceful Fallback**: If voice avatar response times out, the system automatically degrades to text mode to prevent interview lockouts.
     *   **Autoplay Audio Recovery**: Adaptive timeouts auto-advance the interview state even if the browser blocks auto-play audio.
-    *   **Detailed Hardware Error Diagnostics**: Helpful guidance for microphone permission denials, missing audio hardware, or track conflicts.
+    *   **Detailed Hardware Diagnostics**: Clear guidance for microphone permission denials, missing hardware, or track conflicts.
+
+---
+
+## 📊 Candidate Application Tracking & Pipeline Stepper
+
+Built into `client/src/pages/CandidateApplications.tsx`, candidates get full visibility into their recruitment lifecycle:
+*   **5-Stage Visual Progress Stepper**: Tracks candidate progress across `Applied` ➔ `Reviewing` ➔ `Shortlisted` ➔ `Interviewing` ➔ `Selected`.
+*   **Direct AI Interview Launch**: One-click action button (`Start AI Interview`) to initiate interactive avatar sessions.
+*   **Comprehensive Evaluation Reports**: One-click modal view (`View AI Interview & Evaluation Report`) detailing question breakdown, category scores, and AI recommendations.
+*   **Application Control**: Allows candidate application tracking and cancellation management.
 
 ---
 
@@ -56,7 +84,7 @@ AuraRecruit uses a customized implementation of the **Tomorro Design System**, m
     *   `--color-cream` (`#faf8f0`): Warm off-white background canvas.
     *   `--color-canvas` (`#ffffff`): Crisp, layered white for card overlays, table rows, and modals.
     *   `--color-hairline` (`rgba(18, 38, 28, 0.12)`): Faint, high-contrast border definition.
-    *   `--color-hairline-strong` (`rgba(18, 38, 28, 0.22)`): Darker, defined border lines for active states and input focuses.
+    *   `--color-hairline-strong` (`rgba(18, 38, 28, 0.22)`): Darker border lines for active states and input focus.
 
 > [!NOTE]
 > All buttons have dynamic high-contrast hover states. When a light-themed interactive button is hovered, its background turns to deep brand forest green (`var(--color-dark-green)`) and its text & icon symbols are instantly forced to bright white (`#ffffff`) for excellent legibility.
@@ -71,9 +99,9 @@ AuraRecruit is managed as an `npm workspaces` monorepo:
 ai-interview-platform/
 ├── client/                     # Vite + React 18 + TypeScript Frontend Client
 │   ├── src/
-│   │   ├── components/         # Reusable UI components (buttons, navbar, fields)
+│   │   ├── components/         # Reusable UI components (Navbar, Notifications)
 │   │   ├── lib/                # Library utilities (axios client, configs)
-│   │   ├── pages/              # Main routing views (Careers, Onboarding, Leaderboards)
+│   │   ├── pages/              # Routing views (Careers, CandidateInterview, CandidateApplications, HR Hub)
 │   │   └── index.css           # Styling setup (TailwindCSS overrides & Tomorro tokens)
 │   └── vercel.json             # Vercel deployment specification
 │
@@ -84,13 +112,13 @@ ai-interview-platform/
 │   │   ├── scheduler.ts        # Node-cron background jobs for notifications
 │   │   └── index.ts            # Entry point for backend Express app (Port 5000)
 │
-├── python-ai/                  # FastAPI Service (Resume PDF parsing + Gemini 2.5 ATS)
+├── python-ai/                  # FastAPI Service (Resume PDF parsing + Gemini ATS)
 │   ├── app/
 │   │   └── main.py             # PyMuPDF parser, Google Gemini SDK structure
 │   └── requirements.txt        # Core dependencies (fastapi, google-genai, PyMuPDF)
 │
 ├── avatar-service/             # Express Node.js Talking Avatar SDK Wrapper (Port 5002)
-│   └── src/index.ts            # WebRTC streaming, video triggers, fallback handlers
+│   └── src/index.ts            # WebRTC streaming, audio triggers, fallback handlers
 │
 ├── database/                   # Shared Mongoose Models & Schemas
 │   ├── User.ts                 # Candidate & HR profile collections
