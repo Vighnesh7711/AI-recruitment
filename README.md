@@ -1,6 +1,33 @@
 # 🌟 AuraRecruit — AI-Powered Recruitment & Avatar Interview Platform
 
-AuraRecruit is an enterprise-grade AI recruitment platform with automated resume parsing, ATS scoring, and real-time talking-avatar interviews via voice or text.
+> Eliminating hiring bias and human bottlenecks with AI-driven screening, evaluation, and avatar-led interviews.
+
+---
+
+## 🧩 The Problem
+
+Hiring the right talent is one of the most time-consuming and inconsistent processes in any organization:
+
+- **HR teams are overwhelmed** — Reviewing hundreds of resumes manually is slow, error-prone, and expensive.
+- **Bias creeps in** — Human shortlisting often favors familiarity over actual merit or skills.
+- **Candidates are left in the dark** — Applicants rarely get timely feedback or know where they stand in the pipeline.
+- **Interviews are hard to scale** — Scheduling, conducting, and evaluating interviews for every applicant requires enormous HR bandwidth.
+- **Evaluation is inconsistent** — Different interviewers score candidates differently, making fair comparison difficult.
+
+---
+
+## 💡 The Solution — AuraRecruit
+
+AuraRecruit is a full-stack AI recruitment platform that automates the entire hiring pipeline from job posting to final recommendation:
+
+- **📄 AI Resume Screening** — Resumes are automatically parsed and scored against job requirements using Google Gemini AI, producing an objective ATS match score (0–100).
+- **🤖 Talking Avatar Interviews** — Shortlisted candidates attend an AI-led interview session with an animated avatar that speaks questions aloud and evaluates answers in real time — no human interviewer needed.
+- **🎙️ Voice + Text Mode** — Candidates can answer by speaking (microphone) or typing, making the process accessible for everyone.
+- **📊 Data-Driven HR Hub** — HR managers get a live pipeline dashboard showing every candidate's ATS score, interview score, and AI hiring recommendation (*Hire / Shortlist / Reject*) in one place.
+- **⚡ Automated Notifications** — n8n workflows handle email confirmations, interview reminders, and offer letters automatically.
+- **🔍 Transparent for Candidates** — A real-time application tracker shows candidates exactly where they stand at every stage.
+
+AuraRecruit doesn't replace human judgment — it eliminates the noise, so HR teams can focus their energy only on the candidates who truly matter.
 
 ---
 
